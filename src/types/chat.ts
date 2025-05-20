@@ -1,0 +1,18 @@
+
+export type Message = {
+  id: string;
+  content: string;
+  sender: 'user' | 'ai';
+  timestamp: Date;
+};
+
+export type FilterTag = {
+  id: string;
+  label: string;
+  type: 'category' | 'type' | 'topic' | 'visual' | 'design';
+};
+
+export type User = {
+  name: string;
+  avatar: string;
+};
