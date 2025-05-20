@@ -2,16 +2,18 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { FilterTag } from "@/types/chat";
+import { FilterTag, Message } from "@/types/chat";
 import { X, Plus, ChevronLeft, ChevronRight, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface SidebarProps {
   isOpen: boolean;
   toggleSidebar: () => void;
+  starredMessages: Message[];
 }
 
-const Sidebar = ({ isOpen, toggleSidebar }: SidebarProps) => {
+const Sidebar = ({ isOpen, toggleSidebar, starredMessages }: SidebarProps) => {
   const [filterTags, setFilterTags] = useState<FilterTag[]>([
     { id: "1", label: "Category/Type", type: "category" },
     { id: "2", label: "Visual/Design", type: "visual" },
@@ -47,6 +49,11 @@ const Sidebar = ({ isOpen, toggleSidebar }: SidebarProps) => {
     }
   };
 
+  // Get preview of message (first 30 characters)
+  const getMessagePreview = (content: string): string => {
+    return content.length > 30 ? `${content.substring(0, 30)}...` : content;
+  };
+
   return (
     <div
       className={cn(
@@ -55,9 +62,54 @@ const Sidebar = ({ isOpen, toggleSidebar }: SidebarProps) => {
       )}
     >
       <div className="flex flex-col flex-grow p-4 overflow-y-auto">
-        <div className="flex items-center mb-6">
-          <Star className="text-yellow-500 mr-2" size={20} />
-          {isOpen && <span className="text-sm font-medium">Starred messages</span>}
+        {/* Starred Messages Section */}
+        <div className="mb-6">
+          <div className="flex items-center mb-3">
+            <Star className="text-yellow-500 mr-2" size={20} />
+            {isOpen && <span className="text-sm font-medium">Starred messages</span>}
+          </div>
+
+          {starredMessages.length > 0 ? (
+            <div className="flex flex-col gap-2">
+              {isOpen ? (
+                // Full preview in expanded sidebar
+                starredMessages.map((message) => (
+                  <div key={message.id} className="p-2 rounded-md bg-sidebar-accent hover:bg-sidebar-accent/80 cursor-pointer transition-colors">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Avatar className="h-6 w-6">
+                        <AvatarImage src="/ai-avatar.png" alt="AI" />
+                        <AvatarFallback className="bg-primary/10 text-primary text-xs">AI</AvatarFallback>
+                      </Avatar>
+                      <span className="text-xs font-medium">Mystical AI</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground line-clamp-2">
+                      {getMessagePreview(message.content)}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                // Icon only in collapsed sidebar
+                starredMessages.map((message) => (
+                  <Tooltip key={message.id}>
+                    <TooltipTrigger asChild>
+                      <div className="h-8 w-8 rounded-full bg-sidebar-accent flex items-center justify-center cursor-pointer">
+                        <Star className="h-4 w-4 text-yellow-500" />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      <p className="max-w-[200px] text-xs">{getMessagePreview(message.content)}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                ))
+              )}
+            </div>
+          ) : (
+            isOpen && (
+              <div className="text-xs text-muted-foreground">
+                No starred messages yet. Click the star icon on AI messages to save them here.
+              </div>
+            )
+          )}
         </div>
 
         <div className="mb-4">

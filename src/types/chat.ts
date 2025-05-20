@@ -4,6 +4,7 @@ export type Message = {
   content: string;
   sender: 'user' | 'ai';
   timestamp: Date;
+  starred?: boolean;
 };
 
 export type FilterTag = {

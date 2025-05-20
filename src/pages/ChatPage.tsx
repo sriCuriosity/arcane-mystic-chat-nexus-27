@@ -5,6 +5,7 @@ import Sidebar from "@/components/Sidebar";
 import ChatArea from "@/components/ChatArea";
 import MessageInput from "@/components/MessageInput";
 import { Message } from "@/types/chat";
+import { toast } from "sonner";
 
 const ChatPage = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -35,10 +36,32 @@ const ChatPage = () => {
         content: getAIResponse(content),
         sender: "ai",
         timestamp: new Date(),
+        starred: false,
       };
       setMessages((prev) => [...prev, aiMessage]);
       setIsLoading(false);
     }, 1000);
+  };
+
+  // Handle starring/unstarring a message
+  const toggleStarMessage = (messageId: string) => {
+    setMessages(
+      messages.map((message) => {
+        if (message.id === messageId) {
+          const newStarredState = !message.starred;
+          
+          // Show toast notification
+          if (newStarredState) {
+            toast.success("Message starred and saved to your collection");
+          } else {
+            toast.info("Message removed from starred collection");
+          }
+          
+          return { ...message, starred: newStarredState };
+        }
+        return message;
+      })
+    );
   };
 
   // Simple AI response simulation
@@ -56,13 +79,24 @@ const ChatPage = () => {
 Your message was: "${userMessage}"`;
   };
 
+  // Get only starred messages for the sidebar
+  const starredMessages = messages.filter(message => message.starred);
+
   return (
     <div className="h-screen flex flex-col overflow-hidden">
       <AppHeader />
       <div className="flex flex-grow overflow-hidden">
-        <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
+        <Sidebar 
+          isOpen={sidebarOpen} 
+          toggleSidebar={toggleSidebar} 
+          starredMessages={starredMessages} 
+        />
         <div className="flex-grow flex flex-col">
-          <ChatArea messages={messages} isLoading={isLoading} />
+          <ChatArea 
+            messages={messages} 
+            isLoading={isLoading} 
+            onToggleStar={toggleStarMessage} 
+          />
           <MessageInput onSendMessage={handleSendMessage} />
         </div>
       </div>
