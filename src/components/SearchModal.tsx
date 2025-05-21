@@ -1,0 +1,138 @@
+import { useState } from "react";
+import { Message } from "@/types/chat";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandList } from "@/components/ui/command";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Star } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+interface SearchModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  messages: Message[];
+  starredMessages: Message[];
+  onToggleStar: (messageId: string) => void;
+  onMessageClick: (messageId: string) => void;
+}
+
+const SearchModal = ({
+  isOpen,
+  onClose,
+  messages,
+  starredMessages,
+  onToggleStar,
+  onMessageClick,
+}: SearchModalProps) => {
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredMessages = messages.filter((message) =>
+    message.content.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const formatTimestamp = (date: Date) => {
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const getMessagePreview = (content: string): string => {
+    return content.length > 100 ? `${content.substring(0, 100)}...` : content;
+  };
+
+  const handleMessageClick = (messageId: string) => {
+    onMessageClick(messageId);
+    onClose(); // Close the modal after clicking a message
+  };
+
+  const renderMessageItem = (message: Message) => (
+    <div
+      key={message.id}
+      className="flex items-start gap-3 p-2 rounded-md hover:bg-accent cursor-pointer"
+      onClick={() => handleMessageClick(message.id)}
+    >
+      <Avatar className="h-8 w-8 mt-1">
+        <AvatarImage src="/ai-avatar.png" alt="AI" />
+        <AvatarFallback className="bg-primary/10 text-primary">AI</AvatarFallback>
+      </Avatar>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-sm font-medium">Mystical AI</span>
+          <span className="text-xs text-muted-foreground">
+            {formatTimestamp(message.timestamp)}
+          </span>
+        </div>
+        <p className="text-sm text-muted-foreground line-clamp-2">
+          {getMessagePreview(message.content)}
+        </p>
+      </div>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggleStar(message.id);
+        }}
+        className="p-1 hover:bg-accent rounded-md"
+      >
+        <Star
+          size={16}
+          className={cn(
+            message.starred
+              ? "fill-yellow-500 text-yellow-500"
+              : "text-muted-foreground"
+          )}
+        />
+      </button>
+    </div>
+  );
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl h-[80vh] p-0">
+        <Tabs defaultValue="search" className="h-full">
+          <div className="border-b px-4 py-2">
+            <TabsList>
+              <TabsTrigger value="search">Search Messages</TabsTrigger>
+              <TabsTrigger value="starred">Starred Messages</TabsTrigger>
+            </TabsList>
+          </div>
+          
+          <TabsContent value="search" className="h-[calc(100%-3rem)]">
+            <Command className="h-full">
+              <CommandInput
+                placeholder="Search messages..."
+                value={searchQuery}
+                onValueChange={setSearchQuery}
+              />
+              <CommandList>
+                <CommandEmpty>No messages found.</CommandEmpty>
+                <CommandGroup>
+                  {filteredMessages.map(renderMessageItem)}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </TabsContent>
+
+          <TabsContent value="starred" className="h-[calc(100%-3rem)]">
+            <Command className="h-full">
+              <CommandInput
+                placeholder="Filter starred messages..."
+                value={searchQuery}
+                onValueChange={setSearchQuery}
+              />
+              <CommandList>
+                <CommandEmpty>No starred messages found.</CommandEmpty>
+                <CommandGroup>
+                  {starredMessages
+                    .filter((message) =>
+                      message.content.toLowerCase().includes(searchQuery.toLowerCase())
+                    )
+                    .map(renderMessageItem)}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </TabsContent>
+        </Tabs>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export default SearchModal; 
