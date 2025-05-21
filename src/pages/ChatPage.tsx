@@ -6,6 +6,9 @@ import MessageInput from "@/components/MessageInput";
 import { Message } from "@/types/chat";
 import { toast } from "sonner";
 
+const SONAR_API_URL = "https://api.perplexity.ai/chat/completions";
+const SONAR_API_TOKEN = "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"; 
+
 const ChatPage = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -16,7 +19,7 @@ const ChatPage = () => {
     setSidebarOpen(!sidebarOpen);
   };
 
-  const handleSendMessage = (content: string) => {
+  const handleSendMessage = async (content: string) => {
     // Add user message
     const userMessage: Message = {
       id: `user-${Date.now()}`,
@@ -24,23 +27,58 @@ const ChatPage = () => {
       sender: "user",
       timestamp: new Date(),
     };
-    
-    setMessages([...messages, userMessage]);
-    
-    // Simulate AI response
+
+    setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
-    
-    setTimeout(() => {
+
+    try {
+      const aiContent = await fetchSonarAIResponse(content);
       const aiMessage: Message = {
         id: `ai-${Date.now()}`,
-        content: getAIResponse(content),
+        content: aiContent,
         sender: "ai",
         timestamp: new Date(),
         starred: false,
       };
       setMessages((prev) => [...prev, aiMessage]);
+    } catch (error) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `ai-${Date.now()}`,
+          content: "Sorry, I couldn't get a response from the AI.",
+          sender: "ai",
+          timestamp: new Date(),
+          starred: false,
+        },
+      ]);
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
+  };
+
+  // Fetch response from Sonar AI API
+  const fetchSonarAIResponse = async (userMessage: string): Promise<string> => {
+    const options = {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${SONAR_API_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "sonar",
+        messages: [
+          { role: "system", content: "Be precise and concise." },
+          { role: "user", content: userMessage },
+        ],
+      }),
+    };
+
+    const response = await fetch(SONAR_API_URL, options);
+    if (!response.ok) throw new Error("API error");
+    const data = await response.json();
+    // Adjust this according to the actual API response structure
+    return data.choices?.[0]?.message?.content || "No response from AI.";
   };
 
   // Handle starring/unstarring a message
