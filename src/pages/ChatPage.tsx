@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useRef } from "react";
 import AppHeader from "@/components/AppHeader";
 import Sidebar from "@/components/Sidebar";
 import ChatArea from "@/components/ChatArea";
@@ -11,6 +10,7 @@ const ChatPage = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const chatAreaRef = useRef<HTMLDivElement>(null);
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -64,6 +64,19 @@ const ChatPage = () => {
     );
   };
 
+  // Handle clicking a message in search/starred view
+  const handleMessageClick = (messageId: string) => {
+    const messageElement = document.getElementById(`message-${messageId}`);
+    if (messageElement) {
+      messageElement.scrollIntoView({ behavior: "smooth", block: "center" });
+      // Add a temporary highlight effect
+      messageElement.classList.add("highlight-message");
+      setTimeout(() => {
+        messageElement.classList.remove("highlight-message");
+      }, 2000);
+    }
+  };
+
   // Simple AI response simulation
   const getAIResponse = (userMessage: string): string => {
     const responses = [
@@ -89,7 +102,10 @@ Your message was: "${userMessage}"`;
         <Sidebar 
           isOpen={sidebarOpen} 
           toggleSidebar={toggleSidebar} 
-          starredMessages={starredMessages} 
+          starredMessages={starredMessages}
+          messages={messages}
+          onToggleStar={toggleStarMessage}
+          onMessageClick={handleMessageClick}
         />
         <div className="flex-grow flex flex-col">
           <ChatArea 

@@ -1,9 +1,8 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 @layer base {
   :root {
@@ -20,7 +19,7 @@
     --primary-foreground: 0 0% 100%;
 
     --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary-foreground: 240 5% 64.9%;
 
     --muted: 240 3.7% 15.9%;
     --muted-foreground: 240 5% 64.9%;
@@ -111,4 +110,121 @@
   .filter-tag {
     @apply bg-secondary text-secondary-foreground rounded-full px-3 py-1 text-sm flex items-center gap-1;
   }
+
+  /* Chat Area Overscroll Behavior */
+  .chat-area {
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    overflow-y: auto;
+    position: relative;
+  }
+
+  /* Overscroll Effect */
+  .chat-area::before,
+  .chat-area::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 100px;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .chat-area::before {
+    top: -100px;
+    background: linear-gradient(to bottom, 
+      hsl(var(--background) / 0.8),
+      hsl(var(--background) / 0)
+    );
+  }
+
+  .chat-area::after {
+    bottom: -100px;
+    background: linear-gradient(to top, 
+      hsl(var(--background) / 0.8),
+      hsl(var(--background) / 0)
+    );
+  }
+
+  .highlight-message {
+    animation: highlight 2s ease-out;
+  }
+
+  @keyframes highlight {
+    0% {
+      background-color: hsl(var(--primary) / 0.2);
+      transform: scale(1.02);
+    }
+    50% {
+      background-color: hsl(var(--primary) / 0.1);
+      transform: scale(1.01);
+    }
+    100% {
+      background-color: transparent;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes slide-in {
+    from {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  /* Toast animations */
+  [data-sonner-toast] {
+    animation: slide-in 0.2s ease-out;
+  }
+
+  [data-sonner-toast][data-removed="true"] {
+    animation: slide-out 0.2s ease-in;
+  }
+
+  @keyframes slide-out {
+    from {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    to {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+  }
+}
+
+/* Custom Scrollbar Styles */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* For Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
+}
+
+/* Smooth Scrolling */
+html {
+  scroll-behavior: smooth;
 }
