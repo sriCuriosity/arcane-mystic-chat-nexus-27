@@ -8,6 +8,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import ChatPage from "./pages/ChatPage";
 import NotFound from "./pages/NotFound";
+import CharacterShowcase from "./pages/CharacterShowcase";
 
 const queryClient = new QueryClient();
 
@@ -19,6 +20,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
+            {/* <Route path="/" element={<CharacterShowcase />} /> */}
             <Route path="/" element={<ChatPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
