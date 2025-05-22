@@ -5,3 +5,7 @@ sumy
 yake
 nltk
 pydantic
+numpy
+sentence-transformers
+scikit-learn
+torch
