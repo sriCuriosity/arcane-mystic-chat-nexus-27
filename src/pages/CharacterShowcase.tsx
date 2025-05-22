@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronUp, ChevronDown, User, Heart, Search, Users, Zap, Briefcase, Smile, PenTool } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface LifeStage {
-  stage: 'Child' | 'Teen' | 'Adult' | 'Senior';
+  stage: string;
   description: string;
   bgColor: string;
   iconColor: string;
@@ -18,15 +19,62 @@ interface Character {
   secondaryColor: string;
   accentColor: string;
   lifeStages: LifeStage[];
+  engaged?: boolean;
 }
 
 const CharacterShowcase: React.FC = () => {
   const [currentCharacter, setCurrentCharacter] = useState(0);
+  const [engagedCharacter, setEngagedCharacter] = useState<number | null>(null);
   const [selectedLifeStage, setSelectedLifeStage] = useState<{ [key: number]: number }>({});
   const [isTransitioning, setIsTransitioning] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const touchStartY = useRef<number>(0);
   const lastScrollTime = useRef<number>(0);
+
+  // Load engaged character from localStorage
+  const loadEngagedCharacter = (): {
+    characterId: number;
+    role: string;
+    lifeStage: { stage: string; description: string };
+  } | null => {
+    const saved = localStorage.getItem('engagedCharacter');
+    if (!saved) return null;
+
+    try {
+      return JSON.parse(saved);
+    } catch {
+      return null;
+    }
+  };
+
+
+  // Save engaged character to localStorage
+  const saveEngagedCharacter = (
+    characterId: number | null,
+    lifeStageIndex?: number
+  ) => {
+    if (characterId === null || lifeStageIndex === undefined) {
+      localStorage.removeItem('engagedCharacter');
+    } else {
+      const character = characters.find(c => c.id === characterId);
+      if (!character) return;
+
+      const lifeStage = character.lifeStages[lifeStageIndex];
+      if (!lifeStage) return;
+
+      const dataToSave = {
+        characterId,
+        role: character.role,
+        lifeStage: {
+          stage: lifeStage.stage,
+          description: lifeStage.description,
+        }
+      };
+
+      localStorage.setItem('engagedCharacter', JSON.stringify(dataToSave));
+    }
+  };
+
 
   const characters: Character[] = [
     {
@@ -346,6 +394,20 @@ const CharacterShowcase: React.FC = () => {
     };
   }, []);
 
+  // Load engaged character on component mount
+  useEffect(() => {
+    const savedEngaged = loadEngagedCharacter();
+    if (savedEngaged) {
+      setEngagedCharacter(savedEngaged.characterId);
+      // Optionally, set a state for role and lifeStage if you want to use them in UI
+      // e.g. setEngagedRole(savedEngaged.role)
+      // e.g. setEngagedLifeStage(savedEngaged.lifeStage)
+    } else {
+      setEngagedCharacter(null);
+    }
+  }, []);
+
+
   const currentCharacterData = characters[currentCharacter];
   const currentLifeStageIndex = selectedLifeStage[currentCharacter] || 0;
   const currentLifeStage = currentCharacterData.lifeStages[currentLifeStageIndex];
@@ -373,6 +435,17 @@ const CharacterShowcase: React.FC = () => {
       [currentCharacter]: stageIndex
     }));
   };
+
+  const handleToggleEngage = (characterId: number) => {
+    const newEngaged = engagedCharacter === characterId ? null : characterId;
+
+    // Assume you track selected life stage index for each character:
+    const lifeStageIndex = selectedLifeStage[characterId] ?? 0;
+
+    setEngagedCharacter(newEngaged);
+    saveEngagedCharacter(newEngaged, lifeStageIndex);
+  };
+
 
   const handleWheel = (e: WheelEvent) => {
     e.preventDefault();
@@ -437,10 +510,37 @@ const CharacterShowcase: React.FC = () => {
     </div>
   );
 
-  const CharacterCard = ({ character, lifeStage }: { character: Character; lifeStage: LifeStage }) => (
-    <div className={`relative transition-all duration-1000 ${isTransitioning ? 'scale-95 opacity-50' : 'scale-100 opacity-100'}`}>
-      {/* Character card */}
-      <div className="w-80 h-96 bg-white rounded-3xl shadow-2xl relative overflow-hidden">
+  const CharacterCard = ({ character, lifeStage, isEngaged, onToggle }: { 
+    character: Character; 
+    lifeStage: LifeStage; 
+    isEngaged: boolean;
+    onToggle: (id: number) => void;
+  }) => (
+    <div 
+      className={`relative transition-all duration-1000 cursor-pointer ${
+        isTransitioning ? 'scale-95 opacity-50' : 'scale-100 opacity-100'
+      } ${
+        isEngaged ? 'z-50 scale-105' : 'z-10 scale-100'
+      }`}
+      onClick={() => onToggle(character.id)}
+    >
+      {/* Character Card */}
+      <div className={`w-80 h-96 bg-white rounded-3xl relative overflow-hidden transition-all duration-300 ${
+        isEngaged ? 'shadow-2xl shadow-black/20' : 'shadow-none'
+      } hover:shadow-lg`}>
+        {/* Status Label */}
+        <div className="absolute top-4 left-4 z-20">
+          <span
+            className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
+              isEngaged
+                ? 'bg-green-100 text-green-800'
+                : 'bg-gray-100 text-gray-600'
+            }`}
+          >
+            {isEngaged ? 'Engaged' : 'Not Engaged'}
+          </span>
+        </div>
+
         {/* Character illustration area */}
         <div className={`h-48 ${lifeStage.bgColor} flex items-center justify-center transition-all duration-500`}>
           <div className={`${lifeStage.iconColor} transition-all duration-500 pulse-glow`}>
@@ -470,6 +570,9 @@ const CharacterShowcase: React.FC = () => {
       </div>
     </div>
   );
+  
+
+  const navigate = useNavigate();
 
   return (
     <div 
@@ -486,9 +589,12 @@ const CharacterShowcase: React.FC = () => {
           </h1>
         </div>
         
-        <div className={`px-4 py-2 bg-white bg-opacity-20 rounded-full ${currentCharacterData.primaryColor} backdrop-blur-sm`}>
-          {currentCharacter + 1} of {characters.length}
-        </div>
+        <div 
+            className="character-logo bg-arcane rounded-full w-8 h-8 flex items-center justify-center text-white cursor-pointer select-none"
+            onClick={() => navigate('/')}
+          >
+            🤖
+          </div>
       </div>
 
       {/* Navigation arrows */}
@@ -542,12 +648,17 @@ const CharacterShowcase: React.FC = () => {
 
         {/* Center - Character card */}
         <div className="flex-1 flex justify-center items-center relative mb-8 lg:mb-0">
-          <CharacterCard character={currentCharacterData} lifeStage={currentLifeStage} />
+          <CharacterCard 
+            character={currentCharacterData} 
+            lifeStage={currentLifeStage}
+            isEngaged={engagedCharacter === currentCharacterData.id}
+            onToggle={handleToggleEngage}
+          />
         </div>
 
         {/* Right side - Life stage selector */}
         <div className={`flex-1 max-w-md flex flex-col items-end transition-all duration-1000 ${isTransitioning ? 'opacity-0 transform -translate-x-8' : 'opacity-100 transform translate-x-0'}`}>
-          <div className="mb-8">
+          <div className="mb-8 mr-4">
             <h3 className={`text-xl font-semibold ${currentCharacterData.primaryColor} mb-4 text-center`}>
               Life Stages
             </h3>

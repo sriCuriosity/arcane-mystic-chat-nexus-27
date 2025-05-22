@@ -20,8 +20,8 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            {/* <Route path="/" element={<CharacterShowcase />} /> */}
             <Route path="/" element={<ChatPage />} />
+            <Route path="/CharacterShowcase" element={<CharacterShowcase />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

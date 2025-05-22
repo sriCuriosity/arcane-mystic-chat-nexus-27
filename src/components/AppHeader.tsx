@@ -1,8 +1,12 @@
 import { useState } from "react";
 import { User } from "lucide-react"; // for user icon
+import { useNavigate } from 'react-router-dom';
 import { Moon, Sun, Send, ChevronLeft, ChevronDown } from "./Icons"; // your icons
 
 const AppHeader = () => {
+
+  const navigate = useNavigate();
+
   const [historyOpen, setHistoryOpen] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
@@ -57,7 +61,10 @@ const AppHeader = () => {
           <button className="action-button" aria-label="Help">
             <Send />
           </button>
-          <div className="character-logo bg-arcane rounded-full w-8 h-8 flex items-center justify-center text-white cursor-pointer select-none">
+          <div 
+            className="character-logo bg-arcane rounded-full w-8 h-8 flex items-center justify-center text-white cursor-pointer select-none"
+            onClick={() => navigate('/CharacterShowcase')}
+          >
             🤖
           </div>
         </div>
