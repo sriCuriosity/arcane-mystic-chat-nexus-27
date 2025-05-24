@@ -1,5 +1,5 @@
 import axios from "axios";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AppHeader from "@/components/AppHeader";
 import Sidebar from "@/components/Sidebar";
 import ChatArea from "@/components/ChatArea";
@@ -8,7 +8,10 @@ import { Message } from "@/types/chat";
 import { toast } from "sonner";
 
 const SONAR_API_URL = "https://api.perplexity.ai/chat/completions";
-const SONAR_API_TOKEN = "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";
+const SONAR_API_TOKEN = process.env.REACT_APP_SONAR_API_TOKEN || "";
+if (!SONAR_API_TOKEN) {
+  console.error("SONAR_API_TOKEN is not defined. Please set it in your environment variables.");
+}
 const BACKEND_API_URL = "http://localhost:8081";
 
 interface IntentResult {
@@ -21,10 +24,34 @@ interface IntentResult {
   }>;
 }
 
+interface CharacterData {
+  characterId: number;
+  name: string;
+  role: string;
+  systemPrompt: string;
+  lifeStage: {
+    stage: string;
+    description: string;
+  };
+}
+
 const ChatPage = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [characterData, setCharacterData] = useState<CharacterData | null>(null);
+
+  useEffect(() => {
+    const savedCharacter = sessionStorage.getItem('engagedCharacter');
+    if (savedCharacter) {
+      try {
+        const parsedData = JSON.parse(savedCharacter);
+        setCharacterData(parsedData);
+      } catch (error) {
+        console.error('Error parsing character data:', error);
+      }
+    }
+  }, []);
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
@@ -33,6 +60,7 @@ const ChatPage = () => {
       const response = await axios.post(`${BACKEND_API_URL}/classify-intent`, {
         prompt,
       });
+      console.log("Intent API response:", response.data);  // <-- Log intent API response
       return response.data;
     } catch (error) {
       console.error("Intent classification failed:", error);
@@ -44,30 +72,43 @@ const ChatPage = () => {
     userMessage: string,
     systemContent: string
   ): Promise<string> => {
+    const requestPayload = {
+      model: "sonar",
+      messages: [
+        { role: "system", content: systemContent },
+        { role: "user", content: userMessage },
+      ],
+    };
+
+    console.log("Sending request to Sonar AI:");
+    console.log("URL:", SONAR_API_URL);
+    console.log("Headers:", {
+      Authorization: `Bearer ${SONAR_API_TOKEN}`,
+      "Content-Type": "application/json",
+    });
+    console.log("Body:", JSON.stringify(requestPayload, null, 2));
+
     const response = await fetch(SONAR_API_URL, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${SONAR_API_TOKEN}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        model: "sonar",
-        messages: [
-          { role: "system", content: systemContent },
-          { role: "user", content: userMessage },
-        ],
-      }),
+      body: JSON.stringify(requestPayload),
     });
 
     if (!response.ok) throw new Error("Sonar API request failed");
 
     const data = await response.json();
+
+    console.log("Sonar AI API response:", data); // <-- Log Sonar API response
+
     return data.choices?.[0]?.message?.content || "No response from Sonar AI.";
   };
 
   const createOptimizedSystemPrompt = (intent: IntentResult) => {
     const toolsList = intent.recommended_tools
-      .slice(0, 3) // Limit to top 3 tools for efficiency
+      .slice(0, 3)
       .map(tool => `${tool.name}`)
       .join(", ");
 
@@ -89,8 +130,27 @@ Requirements:
   };
 
   const createCasualSystemPrompt = () => {
-    return `You are a friendly AI companion. Respond naturally and engagingly. Keep it conversational and helpful. If appropriate, suggest fun activities like quizzes, games, or interesting facts.`;
-  };
+    if (characterData) {
+      return `
+  You are ${characterData.name}, a ${characterData.role}.
+  
+  Core Personality:
+  ${characterData.systemPrompt}
+  
+  Current Life Stage: "${characterData.lifeStage.stage}"
+  ${characterData.lifeStage.description}
+  
+  Behavior Guidelines:
+  - Stay in character and reflect both your core personality and current life stage.
+  - Respond briefly and clearly, avoiding unnecessary facts or digressions.
+  - Use language appropriate to your life stage and role.
+  - Keep the tone consistent (e.g., playful for child, witty for teen, professional for adult, wise for senior).
+  - Encourage learning with supportive and engaging answers.
+      `.trim();
+    }
+  
+    return `You are a friendly AI companion. Respond naturally and helpfully with a conversational tone.`;
+  }  
 
   const handleSendMessage = async (content: string) => {
     const userMessage: Message = {
@@ -129,7 +189,6 @@ Requirements:
 
       setMessages((prev) => [...prev, aiMessage]);
 
-      // Show intent detection toast
       if (shouldShowIntentToast) {
         toast.success(
           `🎯 Detected: ${intent.matched_intention} (${Math.round(intent.confidence * 100)}% confidence)`,
@@ -187,7 +246,6 @@ Requirements:
           messages={messages}
           onToggleStar={toggleStarMessage}
           onMessageClick={(messageId) => {
-            // Placeholder for message click handler
             console.log("Message clicked:", messageId);
           }}
         />

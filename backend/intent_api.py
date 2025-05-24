@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Optional, Union
 import numpy as np
@@ -6,8 +7,18 @@ from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 import torch
 from collections import defaultdict
+import re
 
 app = FastAPI()
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+)
 
 # Load state-of-the-art sentence transformer model
 model = SentenceTransformer('all-mpnet-base-v2')  # Best general-purpose model as of 2023
@@ -293,7 +304,7 @@ for item in intention_data:
 
 class IntentRequest(BaseModel):
     prompt: str
-    threshold: Optional[float] = 0.65  # Allow dynamic threshold
+    threshold: Optional[float] = 0.35  # Lowered threshold for better matching
 
 class ToolRecommendation(BaseModel):
     name: str
@@ -311,40 +322,122 @@ class IntentResponse(BaseModel):
     is_fallback: bool
     alternative_intentions: List[AlternativeIntention]
 
-def semantic_search(query: str, intentions: List[Dict], threshold: float) -> Dict:
-    """Enhanced semantic search with proper thresholding"""
+def preprocess_text(text: str) -> str:
+    """Clean and normalize text for better matching"""
+    # Convert to lowercase
+    text = text.lower()
+    # Remove special characters but keep important punctuation
+    text = re.sub(r'[^a-z0-9\s.,!?-]', ' ', text)
+    # Remove extra whitespace
+    text = ' '.join(text.split())
+    return text
+
+def extract_keywords(text: str) -> List[str]:
+    """Extract important keywords from text"""
+    # Common words to exclude
+    stop_words = {'i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'ourselves', 'you', 'your', 'yours',
+                 'yourself', 'yourselves', 'he', 'him', 'his', 'himself', 'she', 'her', 'hers',
+                 'herself', 'it', 'its', 'itself', 'they', 'them', 'their', 'theirs', 'themselves',
+                 'what', 'which', 'who', 'whom', 'this', 'that', 'these', 'those', 'am', 'is', 'are',
+                 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'having', 'do', 'does',
+                 'did', 'doing', 'a', 'an', 'the', 'and', 'but', 'if', 'or', 'because', 'as', 'until',
+                 'while', 'of', 'at', 'by', 'for', 'with', 'about', 'against', 'between', 'into',
+                 'through', 'during', 'before', 'after', 'above', 'below', 'to', 'from', 'up', 'down',
+                 'in', 'out', 'on', 'off', 'over', 'under', 'again', 'further', 'then', 'once'}
+    
+    # Split text into words and filter out stop words
+    words = text.lower().split()
+    keywords = [word for word in words if word not in stop_words and len(word) > 2]
+    return keywords
+
+def calculate_context_similarity(query: str, intention: str, tools: List[str]) -> float:
+    """Calculate similarity considering context from tools and intention"""
+    # Combine intention and tools for context
+    context = f"{intention} {' '.join(tools)}"
+    
+    # Get embeddings
     query_embedding = model.encode(query, convert_to_tensor=True)
+    context_embedding = model.encode(context, convert_to_tensor=True)
     
-    # Calculate similarities
-    similarities = []
-    for item in intentions:
-        sim = cosine_similarity(
-            query_embedding.reshape(1, -1),
-            item["embedding"].cpu().numpy().reshape(1, -1)
-        )[0][0]
-        similarities.append((item["intention"], sim, item["tools"]))
+    # Calculate similarity
+    similarity = cosine_similarity(
+        query_embedding.reshape(1, -1),
+        context_embedding.reshape(1, -1)
+    )[0][0]
     
-    # Sort by similarity
-    similarities.sort(key=lambda x: x[1], reverse=True)
-    
-    # Apply threshold
-    if similarities[0][1] < threshold:
+    return float(similarity)
+
+def semantic_search(query: str, intentions: List[Dict], threshold: float) -> Dict:
+    """Enhanced semantic search with context awareness and keyword matching"""
+    try:
+        # Preprocess query
+        processed_query = preprocess_text(query)
+        query_keywords = extract_keywords(processed_query)
+        
+        # Calculate similarities with context awareness
+        similarities = []
+        for item in intentions:
+            # Basic semantic similarity
+            base_similarity = cosine_similarity(
+                model.encode(processed_query, convert_to_tensor=True).reshape(1, -1),
+                item["embedding"].cpu().numpy().reshape(1, -1)
+            )[0][0]
+            
+            # Context similarity
+            context_similarity = calculate_context_similarity(
+                processed_query,
+                item["intention"],
+                item["tools"]
+            )
+            
+            # Keyword matching bonus
+            keyword_matches = sum(1 for keyword in query_keywords 
+                                if keyword in item["intention"].lower() or 
+                                any(keyword in tool.lower() for tool in item["tools"]))
+            keyword_bonus = min(0.1, keyword_matches * 0.02)  # Max 10% bonus
+            
+            # Combined score with weights
+            final_score = (base_similarity * 0.6 + context_similarity * 0.4) + keyword_bonus
+            
+            similarities.append((item["intention"], final_score, item["tools"]))
+        
+        # Sort by similarity
+        similarities.sort(key=lambda x: x[1], reverse=True)
+        
+        # Get top matches
+        top_matches = similarities[:3]
+        
+        # If no matches above threshold, return top match with fallback
+        if top_matches[0][1] < threshold:
+            return {
+                "matched_intention": top_matches[0][0],
+                "confidence": float(top_matches[0][1]),
+                "tools": top_matches[0][2],
+                "is_fallback": True,
+                "alternatives": [
+                    {"intention": intent, "score": float(score)}
+                    for intent, score, _ in top_matches[1:]
+                ]
+            }
+        
+        return {
+            "matched_intention": top_matches[0][0],
+            "confidence": float(top_matches[0][1]),
+            "tools": top_matches[0][2],
+            "is_fallback": False,
+            "alternatives": [
+                {"intention": intent, "score": float(score)}
+                for intent, score, _ in top_matches[1:]
+            ]
+        }
+    except Exception as e:
+        print(f"Error in semantic search: {str(e)}")
         return {
             "matched_intention": None,
-            "confidence": float(similarities[0][1]),
-            "is_fallback": True
+            "confidence": 0.0,
+            "is_fallback": True,
+            "alternatives": []
         }
-    
-    return {
-        "matched_intention": similarities[0][0],
-        "confidence": float(similarities[0][1]),
-        "tools": similarities[0][2],
-        "is_fallback": False,
-        "alternatives": [
-            {"intention": intent, "score": float(score)}
-            for intent, score, _ in similarities[1:4]
-        ]
-    }
 
 @app.post("/classify-intent", response_model=IntentResponse)
 async def classify_intent(request: IntentRequest):

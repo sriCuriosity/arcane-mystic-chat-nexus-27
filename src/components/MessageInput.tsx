@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Send, PaperclipIcon, Upload } from "lucide-react";
+import { Send, PaperclipIcon, Upload,Sun, Moon } from "lucide-react";
+import { useTheme } from "@/contexts/ThemeContext";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,6 +51,8 @@ const MessageInput = ({ onSendMessage }: MessageInputProps) => {
     };
   };
 
+  const { isDarkMode, toggleTheme } = useTheme();
+
   return (
     <div className="border-t border-border p-4 bg-background">
       <div className="flex items-center gap-2 max-w-3xl mx-auto">
@@ -84,6 +88,9 @@ const MessageInput = ({ onSendMessage }: MessageInputProps) => {
           className="bg-arcane hover:bg-arcane-hover text-white"
         >
           <Send size={18} />
+        </Button>
+        <Button variant="ghost" size="icon" onClick={toggleTheme}>
+          {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
         </Button>
       </div>
     </div>
