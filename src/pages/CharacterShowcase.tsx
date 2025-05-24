@@ -19,7 +19,6 @@ interface Character {
   secondaryColor: string;
   accentColor: string;
   lifeStages: LifeStage[];
-  systemPrompt: string;
   engaged?: boolean;
 }
 
@@ -31,7 +30,51 @@ const CharacterShowcase: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const touchStartY = useRef<number>(0);
   const lastScrollTime = useRef<number>(0);
-  const isInitialLoad = useRef(true);
+
+  // Load engaged character from localStorage
+  const loadEngagedCharacter = (): {
+    characterId: number;
+    role: string;
+    lifeStage: { stage: string; description: string };
+  } | null => {
+    const saved = localStorage.getItem('engagedCharacter');
+    if (!saved) return null;
+
+    try {
+      return JSON.parse(saved);
+    } catch {
+      return null;
+    }
+  };
+
+
+  // Save engaged character to localStorage
+  const saveEngagedCharacter = (
+    characterId: number | null,
+    lifeStageIndex?: number
+  ) => {
+    if (characterId === null || lifeStageIndex === undefined) {
+      localStorage.removeItem('engagedCharacter');
+    } else {
+      const character = characters.find(c => c.id === characterId);
+      if (!character) return;
+
+      const lifeStage = character.lifeStages[lifeStageIndex];
+      if (!lifeStage) return;
+
+      const dataToSave = {
+        characterId,
+        role: character.role,
+        lifeStage: {
+          stage: lifeStage.stage,
+          description: lifeStage.description,
+        }
+      };
+
+      localStorage.setItem('engagedCharacter', JSON.stringify(dataToSave));
+    }
+  };
+
 
   const characters: Character[] = [
     {
@@ -43,29 +86,28 @@ const CharacterShowcase: React.FC = () => {
       primaryColor: "text-white",
       secondaryColor: "bg-blue-300",
       accentColor: "bg-indigo-600",
-      systemPrompt: "You are Zara, a kind and witty teacher. You speak clearly, use relatable examples, and encourage learning through curiosity. You adapt your teaching style to the user’s level and keep conversations friendly, focused, and supportive. Avoid random facts unless relevant to teaching. Stay in character at all times.",
       lifeStages: [
         {
           stage: "Child",
-          description: "As a child, you're playful, curious, and love teaching through fun. You explain ideas using simple words, drawings, or silly comparisons, and get excited about little things like crayons or stickers.",
+          description: "I'm a mini teacher with a serious crayon addiction. Homework? It's just drawings of cats!",
           bgColor: "bg-yellow-200",
           iconColor: "text-yellow-600"
         },
         {
           stage: "Teen",
-          description: "As a teenager, you’re clever, slightly sarcastic, and explain things like a cool tutor. You break down tricky topics with a mix of humor and logic, and you're not afraid to challenge someone to think deeper.",
+          description: "I'll teach you algebra and sarcasm—both essential for survival in school.",
           bgColor: "bg-orange-200",
           iconColor: "text-orange-600"
         },
         {
           stage: "Adult",
-          description: "As an adult, you're confident, well-prepared, and energetic. You use structured explanations, clear logic, and practical tips. You encourage users to ask questions and take charge of their own learning.",
+          description: "I've got lesson plans, life hacks, and enough coffee to run a small school.",
           bgColor: "bg-blue-200",
           iconColor: "text-blue-600"
         },
         {
           stage: "Senior",
-          description: "As a senior, you're wise and patient, with a touch of humor. You share stories, connect lessons to real-life, and explain even complex ideas gently and thoroughly. You value understanding over speed.",
+          description: "I've seen chalkboards, whiteboards, and smartboards—wisdom? I invented that syllabus.",
           bgColor: "bg-purple-200",
           iconColor: "text-purple-600"
         }
@@ -80,7 +122,6 @@ const CharacterShowcase: React.FC = () => {
       primaryColor: "text-white",
       secondaryColor: "bg-emerald-300",
       accentColor: "bg-teal-600",
-      systemPrompt: "You are Jade, a compassionate and insightful psychologist. You listen actively, ask probing questions to help users explore their thoughts and feelings, provide emotional support, and offer evidence-based coping strategies. Always be empathetic, non-judgmental, and help users develop self-awareness and emotional intelligence.",
       lifeStages: [
         {
           stage: "Child",
@@ -117,7 +158,6 @@ const CharacterShowcase: React.FC = () => {
       primaryColor: "text-white",
       secondaryColor: "bg-gray-300",
       accentColor: "bg-slate-600",
-      systemPrompt: "You are Alex, a sharp and analytical detective. You approach problems methodically, ask detailed questions to gather information, look for patterns and connections, think critically about evidence, and help users solve problems step by step. Always be logical, observant, and thorough in your investigations.",
       lifeStages: [
         {
           stage: "Child",
@@ -154,7 +194,6 @@ const CharacterShowcase: React.FC = () => {
       primaryColor: "text-white",
       secondaryColor: "bg-pink-300",
       accentColor: "bg-rose-600",
-      systemPrompt: "You are Clara, a warm and supportive friend. You're always there to listen, offer comfort during tough times, celebrate successes, give honest but kind advice, and maintain a positive outlook. Be conversational, caring, and genuinely interested in the user's life and wellbeing.",
       lifeStages: [
         {
           stage: "Child",
@@ -191,7 +230,6 @@ const CharacterShowcase: React.FC = () => {
       primaryColor: "text-white",
       secondaryColor: "bg-orange-300",
       accentColor: "bg-amber-600",
-      systemPrompt: "You are Rick, an energetic and inspiring motivator. You pump people up, help them overcome obstacles, focus on solutions rather than problems, celebrate progress, and push users to reach their potential. Always be enthusiastic, positive, and action-oriented in your responses.",
       lifeStages: [
         {
           stage: "Child",
@@ -228,7 +266,6 @@ const CharacterShowcase: React.FC = () => {
       primaryColor: "text-white",
       secondaryColor: "bg-slate-300",
       accentColor: "bg-gray-700",
-      systemPrompt: "You are Mark, a focused and accomplished professional. You provide structured advice, help with career planning, offer business insights, emphasize efficiency and results, and guide users toward professional success. Always be direct, organized, and goal-oriented in your communication.",
       lifeStages: [
         {
           stage: "Child",
@@ -265,7 +302,6 @@ const CharacterShowcase: React.FC = () => {
       primaryColor: "text-white",
       secondaryColor: "bg-lime-300",
       accentColor: "bg-green-600",
-      systemPrompt: "You are Ria, a hilarious and witty comedian. You use humor to lighten moods, tell jokes and funny stories, find the amusing side of situations, use puns and wordplay, and help users laugh at life's absurdities. Always keep things light-hearted and entertaining while still being helpful.",
       lifeStages: [
         {
           stage: "Child",
@@ -302,7 +338,6 @@ const CharacterShowcase: React.FC = () => {
       primaryColor: "text-white",
       secondaryColor: "bg-violet-300",
       accentColor: "bg-purple-600",
-      systemPrompt: "You are Tina, a creative and expressive poet. You speak in metaphors and beautiful imagery, find poetry in everyday moments, express emotions through artistic language, use rhythm and flow in your responses, and help users see the world through a more artistic lens. Incorporate poetic elements and creativity into all your interactions.",
       lifeStages: [
         {
           stage: "Child",
@@ -332,148 +367,6 @@ const CharacterShowcase: React.FC = () => {
     }
   ];
 
-  const currentCharacterData = characters[currentCharacter];
-  const currentLifeStageIndex = selectedLifeStage[currentCharacterData.id] ?? 0;
-  const currentLifeStage = currentCharacterData.lifeStages[currentLifeStageIndex];
-
-  // Load engaged character from memory
-  const loadEngagedCharacter = (): {
-    characterId: number;
-    name: string;
-    role: string;
-    systemPrompt: string;
-    lifeStage: { stage: string; description: string };
-    lifeStageIndex: number;
-  } | null => {
-    const saved = sessionStorage.getItem('engagedCharacter');
-    if (!saved) return null;
-
-    try {
-      return JSON.parse(saved);
-    } catch {
-      return null;
-    }
-  };
-
-  // Save engaged character to memory
-  const saveEngagedCharacter = (
-    characterId: number | null,
-    lifeStageIndex?: number
-  ) => {
-    if (characterId === null || lifeStageIndex === undefined) {
-      sessionStorage.removeItem('engagedCharacter');
-      return;
-    }
-
-    const character = characters.find(c => c.id === characterId);
-    if (!character) return;
-
-    const lifeStage = character.lifeStages[lifeStageIndex];
-    if (!lifeStage) return;
-
-    const dataToSave = {
-      characterId,
-      name: character.name,
-      role: character.role,
-      systemPrompt: character.systemPrompt,
-      lifeStage: {
-        stage: lifeStage.stage,
-        description: lifeStage.description,
-      },
-      lifeStageIndex
-    };
-
-    sessionStorage.setItem('engagedCharacter', JSON.stringify(dataToSave));
-  };
-
-  // Initial load of engaged character
-  useEffect(() => {
-    if (isInitialLoad.current) {
-      const savedEngaged = loadEngagedCharacter();
-      if (savedEngaged) {
-        const characterIndex = characters.findIndex(c => c.id === savedEngaged.characterId);
-        if (characterIndex !== -1) {
-          setCurrentCharacter(characterIndex);
-          setEngagedCharacter(savedEngaged.characterId);
-          setSelectedLifeStage({
-            [savedEngaged.characterId]: savedEngaged.lifeStageIndex
-          });
-        }
-      }
-      isInitialLoad.current = false;
-    }
-  }, []);
-
-  const handleLifeStageChange = (stageIndex: number) => {
-    const characterId = characters[currentCharacter].id;
-    
-    // Update life stage for current character only
-    setSelectedLifeStage(prev => ({
-      ...prev,
-      [characterId]: stageIndex
-    }));
-
-    // Automatically engage the character when selecting a life stage
-    setEngagedCharacter(characterId);
-    saveEngagedCharacter(characterId, stageIndex);
-  };
-
-  const handleToggleEngage = (characterId: number) => {
-    const newEngaged = engagedCharacter === characterId ? null : characterId;
-    const lifeStageIndex = selectedLifeStage[characterId] ?? 0;
-
-    setEngagedCharacter(newEngaged);
-    saveEngagedCharacter(newEngaged, lifeStageIndex);
-  };
-
-  const handleScroll = (direction: 'up' | 'down') => {
-    const now = Date.now();
-    if (now - lastScrollTime.current < 1000) return;
-    
-    lastScrollTime.current = now;
-    setIsTransitioning(true);
-    
-    setTimeout(() => {
-      if (direction === 'down' && currentCharacter < characters.length - 1) {
-        setCurrentCharacter(prev => prev + 1);
-      } else if (direction === 'up' && currentCharacter > 0) {
-        setCurrentCharacter(prev => prev - 1);
-      }
-      setIsTransitioning(false);
-    }, 300);
-  };
-
-  // Handle character changes
-  useEffect(() => {
-    if (isInitialLoad.current) return;
-
-    const currentCharId = characters[currentCharacter].id;
-    const savedEngaged = loadEngagedCharacter();
-
-    if (savedEngaged && savedEngaged.characterId === currentCharId) {
-      // If this is the engaged character, use its saved life stage
-      setSelectedLifeStage(prev => ({
-        ...prev,
-        [currentCharId]: savedEngaged.lifeStageIndex
-      }));
-    } else if (!selectedLifeStage[currentCharId]) {
-      // For non-engaged characters without a saved life stage, set to Child
-      setSelectedLifeStage(prev => ({
-        ...prev,
-        [currentCharId]: 0
-      }));
-    }
-  }, [currentCharacter]);
-
-  // Debug logging
-  useEffect(() => {
-    console.log('Current Character:', currentCharacter);
-    console.log('Current Character ID:', currentCharacterData.id);
-    console.log('Selected Life Stage:', selectedLifeStage);
-    console.log('Current Life Stage Index:', currentLifeStageIndex);
-    console.log('Engaged Character:', engagedCharacter);
-  }, [currentCharacter, selectedLifeStage, currentLifeStageIndex, engagedCharacter, currentCharacterData.id]);
-
   // Add custom styles to document head
   useEffect(() => {
     const styleElement = document.createElement('style');
@@ -500,6 +393,59 @@ const CharacterShowcase: React.FC = () => {
       document.head.removeChild(styleElement);
     };
   }, []);
+
+  // Load engaged character on component mount
+  useEffect(() => {
+    const savedEngaged = loadEngagedCharacter();
+    if (savedEngaged) {
+      setEngagedCharacter(savedEngaged.characterId);
+      // Optionally, set a state for role and lifeStage if you want to use them in UI
+      // e.g. setEngagedRole(savedEngaged.role)
+      // e.g. setEngagedLifeStage(savedEngaged.lifeStage)
+    } else {
+      setEngagedCharacter(null);
+    }
+  }, []);
+
+
+  const currentCharacterData = characters[currentCharacter];
+  const currentLifeStageIndex = selectedLifeStage[currentCharacter] || 0;
+  const currentLifeStage = currentCharacterData.lifeStages[currentLifeStageIndex];
+
+  const handleScroll = (direction: 'up' | 'down') => {
+    const now = Date.now();
+    if (now - lastScrollTime.current < 1000) return;
+    
+    lastScrollTime.current = now;
+    setIsTransitioning(true);
+    
+    setTimeout(() => {
+      if (direction === 'down' && currentCharacter < characters.length - 1) {
+        setCurrentCharacter(prev => prev + 1);
+      } else if (direction === 'up' && currentCharacter > 0) {
+        setCurrentCharacter(prev => prev - 1);
+      }
+      setIsTransitioning(false);
+    }, 300);
+  };
+
+  const handleLifeStageChange = (stageIndex: number) => {
+    setSelectedLifeStage(prev => ({
+      ...prev,
+      [currentCharacter]: stageIndex
+    }));
+  };
+
+  const handleToggleEngage = (characterId: number) => {
+    const newEngaged = engagedCharacter === characterId ? null : characterId;
+
+    // Assume you track selected life stage index for each character:
+    const lifeStageIndex = selectedLifeStage[characterId] ?? 0;
+
+    setEngagedCharacter(newEngaged);
+    saveEngagedCharacter(newEngaged, lifeStageIndex);
+  };
+
 
   const handleWheel = (e: WheelEvent) => {
     e.preventDefault();
@@ -544,6 +490,7 @@ const CharacterShowcase: React.FC = () => {
 
   const FloatingElements = ({ character }: { character: Character }) => (
     <div className="absolute inset-0 pointer-events-none">
+      {/* Floating character-themed elements */}
       <div 
         className={`absolute top-20 left-16 w-16 h-16 ${character.secondaryColor} rounded-full opacity-60 transition-all duration-1000 float-animation`}
         style={{ animationDuration: '6s', animationDelay: '0s' }}
@@ -577,9 +524,11 @@ const CharacterShowcase: React.FC = () => {
       }`}
       onClick={() => onToggle(character.id)}
     >
+      {/* Character Card */}
       <div className={`w-80 h-96 bg-white rounded-3xl relative overflow-hidden transition-all duration-300 ${
         isEngaged ? 'shadow-2xl shadow-black/20' : 'shadow-none'
       } hover:shadow-lg`}>
+        {/* Status Label */}
         <div className="absolute top-4 left-4 z-20">
           <span
             className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
@@ -592,12 +541,14 @@ const CharacterShowcase: React.FC = () => {
           </span>
         </div>
 
+        {/* Character illustration area */}
         <div className={`h-48 ${lifeStage.bgColor} flex items-center justify-center transition-all duration-500`}>
           <div className={`${lifeStage.iconColor} transition-all duration-500 pulse-glow`}>
             {character.icon}
           </div>
         </div>
         
+        {/* Character info */}
         <div className="p-6 h-48 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-3">
@@ -619,6 +570,7 @@ const CharacterShowcase: React.FC = () => {
       </div>
     </div>
   );
+  
 
   const navigate = useNavigate();
 
@@ -629,6 +581,7 @@ const CharacterShowcase: React.FC = () => {
     >
       <FloatingElements character={currentCharacterData} />
 
+      {/* Header */}
       <div className="relative z-10 flex justify-between items-center p-6">
         <div className="flex items-center gap-4">
           <h1 className={`text-2xl font-bold ${currentCharacterData.primaryColor}`}>
@@ -644,6 +597,7 @@ const CharacterShowcase: React.FC = () => {
           </div>
       </div>
 
+      {/* Navigation arrows */}
       <div className="fixed right-6 top-1/2 transform -translate-y-1/2 z-20 flex flex-col gap-4">
         <button 
           onClick={() => handleScroll('up')}
@@ -661,6 +615,7 @@ const CharacterShowcase: React.FC = () => {
         </button>
       </div>
 
+      {/* Character indicator dots */}
       <div className="fixed left-6 top-1/2 transform -translate-y-1/2 z-20 flex flex-col gap-3">
         {characters.map((_, index) => (
           <button
@@ -675,8 +630,10 @@ const CharacterShowcase: React.FC = () => {
         ))}
       </div>
 
+      {/* Main content */}
       <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between px-6 lg:px-16 py-8 min-h-screen">
         
+        {/* Left side - Character info */}
         <div className={`flex-1 max-w-md mb-8 lg:mb-0 transition-all duration-1000 ${isTransitioning ? 'opacity-0 transform translate-x-8' : 'opacity-100 transform translate-x-0'}`}>
           <h1 className={`text-5xl lg:text-6xl font-bold ${currentCharacterData.primaryColor} mb-4 leading-tight`}>
             Meet<br />{currentCharacterData.name}
@@ -689,6 +646,7 @@ const CharacterShowcase: React.FC = () => {
           </p>
         </div>
 
+        {/* Center - Character card */}
         <div className="flex-1 flex justify-center items-center relative mb-8 lg:mb-0">
           <CharacterCard 
             character={currentCharacterData} 
@@ -698,33 +656,32 @@ const CharacterShowcase: React.FC = () => {
           />
         </div>
 
+        {/* Right side - Life stage selector */}
         <div className={`flex-1 max-w-md flex flex-col items-end transition-all duration-1000 ${isTransitioning ? 'opacity-0 transform -translate-x-8' : 'opacity-100 transform translate-x-0'}`}>
           <div className="mb-8 mr-4">
             <h3 className={`text-xl font-semibold ${currentCharacterData.primaryColor} mb-4 text-center`}>
               Life Stages
             </h3>
             <div className="flex flex-col gap-3 bg-white bg-opacity-20 p-4 rounded-2xl backdrop-blur-sm">
-              {currentCharacterData.lifeStages.map((stage, index) => {
-                const isSelected = index === currentLifeStageIndex;
-                return (
-                  <button
-                    key={stage.stage}
-                    onClick={() => handleLifeStageChange(index)}
-                    className={`px-6 py-3 rounded-xl text-sm font-medium transition-all transform hover:scale-105 ${
-                      isSelected
-                        ? 'bg-white text-gray-700 shadow-lg'
-                        : `${currentCharacterData.primaryColor} hover:bg-white hover:bg-opacity-10`
-                    }`}
-                  >
-                    {stage.stage}
-                  </button>
-                );
-              })}
+              {currentCharacterData.lifeStages.map((stage, index) => (
+                <button
+                  key={stage.stage}
+                  onClick={() => handleLifeStageChange(index)}
+                  className={`px-6 py-3 rounded-xl text-sm font-medium transition-all transform hover:scale-105 ${
+                    index === currentLifeStageIndex
+                      ? 'bg-white text-gray-700 shadow-lg'
+                      : `${currentCharacterData.primaryColor} hover:bg-white hover:bg-opacity-10`
+                  }`}
+                >
+                  {stage.stage}
+                </button>
+              ))}
             </div>
           </div>
         </div>
       </div>
 
+      {/* Bottom section */}
       <div className={`relative z-10 flex justify-center items-center px-6 lg:px-16 pb-8 transition-all duration-1000 ${isTransitioning ? 'opacity-0 transform translate-y-8' : 'opacity-100 transform translate-y-0'}`}>
         <div className="text-center">
           <div className="flex gap-2 justify-center mb-4">

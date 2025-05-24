@@ -43,7 +43,7 @@ const ChatArea = ({ messages, isLoading, onToggleStar }: ChatAreaProps) => {
       // Try to find JSON within the content
       const jsonMatch = content.match(/```json\s*({[\s\S]*?})\s*```/) || 
                        content.match(/json\s*({[\s\S]*?})\s*/) ||
-                       content.match(/({[\s\S]*?})/);
+                       content.match(/```json\s*({[\s\S]*?})\s*```/);
       
       if (jsonMatch) {
         const jsonStr = jsonMatch[1];

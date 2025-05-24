@@ -8,7 +8,10 @@ import { Message } from "@/types/chat";
 import { toast } from "sonner";
 
 const SONAR_API_URL = "https://api.perplexity.ai/chat/completions";
-const SONAR_API_TOKEN = "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";
+const SONAR_API_TOKEN = process.env.REACT_APP_SONAR_API_TOKEN || "";
+if (!SONAR_API_TOKEN) {
+  console.error("SONAR_API_TOKEN is not defined. Please set it in your environment variables.");
+}
 const BACKEND_API_URL = "http://localhost:8081";
 
 interface IntentResult {

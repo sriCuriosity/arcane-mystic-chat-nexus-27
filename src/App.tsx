@@ -21,7 +21,8 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<ChatPage />} />
-            <Route path="/CharacterShowcase" element={<CharacterShowcase />}/>
+            <Route path="/CharacterShowcase" element={<CharacterShowcase />} />
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
