@@ -7,12 +7,14 @@ import MessageInput from "@/components/MessageInput";
 import { Message } from "@/types/chat";
 import { toast } from "sonner";
 
+
 const SONAR_API_URL = "https://api.perplexity.ai/chat/completions";
 const SONAR_API_TOKEN = process.env.REACT_APP_SONAR_API_TOKEN || "";
 if (!SONAR_API_TOKEN) {
-  console.error("SONAR_API_TOKEN is not defined. Please set it in your environment variables.");
+  console.error("SONAR_API_TOKEN is not defined.Please set it in your environment variables.");
 }
-const BACKEND_API_URL = "http://localhost:8081";
+const BACKEND_API_URL = "http://localhost:8081"; // Update with your backend API URL
+
 
 interface IntentResult {
   matched_intention: string | null;
@@ -107,51 +109,61 @@ const ChatPage = () => {
   };
 
   const createOptimizedSystemPrompt = (intent: IntentResult) => {
-    const toolsList = intent.recommended_tools
-      .slice(0, 3)
-      .map(tool => `${tool.name}`)
-      .join(", ");
+    if (!intent.recommended_tools.length) {
+      // fallback prompt if no tools recommended
+      return `Return a JSON with two fields:
 
-    return `Intent: ${intent.matched_intention}
-Tools: ${toolsList}
+1. **response**: Helpful answer to user's intent: "${intent.matched_intention || "Unknown"}".
+2. **code**: HTML + CSS code for a static website illustrating a useful method to address the user's query.
 
-Return JSON:
-{
-  "response": "Brief explanation (2-3 sentences max)",
-  "code": "Complete HTML with inline CSS/JS for interactive ${intent.matched_intention} tool using ${toolsList}. Make it functional, responsive, and visually appealing."
-}
+Be specific and relevant to the task.`;
+    }
 
-Requirements:
-- Self-contained HTML
-- Interactive elements
-- Clean, modern design
-- Mobile-friendly
-- No external dependencies`;
+    // Pick top tool with highest confidence
+    const topTool = intent.recommended_tools.reduce((prev, curr) =>
+      curr.confidence > prev.confidence ? curr : prev
+    );
+
+    return `You are a helpful AI assistant.
+
+User intent: "${intent.matched_intention}"
+Top recommended tool:
+- Name: ${topTool.name}
+- Description: ${topTool.description}
+
+Return a JSON with two fields:
+
+1. "response": A helpful, concise explanation answering the user's intent.
+2. "code": Complete HTML + CSS code for a static website section that visually demonstrates and explains the method "${topTool.name}" to help the user achieve their goal.
+<html>...interactive flashcards or roadmap layout...</html>
+
+Make the HTML self-contained, clean, modern, responsive, and visually appealing. Avoid external dependencies.
+
+Only return the JSON object, no extra text.`;
   };
 
   const createCasualSystemPrompt = () => {
     if (characterData) {
       return `
-  You are ${characterData.name}, a ${characterData.role}.
-  
-  Core Personality:
-  ${characterData.systemPrompt}
-  
-  Current Life Stage: "${characterData.lifeStage.stage}"
-  ${characterData.lifeStage.description}
-  
-  Behavior Guidelines:
-  - Stay in character and reflect both your core personality and current life stage.
-  - Respond briefly and clearly, avoiding unnecessary facts or digressions.
-  - Use language appropriate to your life stage and role.
-  - Keep the tone consistent (e.g., playful for child, witty for teen, professional for adult, wise for senior).
-  - Encourage learning with supportive and engaging answers.
+You are ${characterData.name}, a ${characterData.role}.
+
+Core Personality:
+${characterData.systemPrompt}
+
+Current Life Stage: "${characterData.lifeStage.stage}"
+${characterData.lifeStage.description}
+
+Behavior Guidelines:
+- Stay in character and reflect both your core personality and current life stage.
+- Respond briefly and clearly, avoiding unnecessary facts or digressions.
+- Use language appropriate to your life stage and role.
+- Keep the tone consistent (e.g., playful for child, witty for teen, professional for adult, wise for senior).
+- Encourage learning with supportive and engaging answers.
       `.trim();
     }
-  
-    return `You are a friendly AI companion. Respond naturally and helpfully with a conversational tone.`;
-  }  
 
+    return `You are a friendly AI companion. Respond naturally and helpfully with a conversational tone.`;
+  };
   const handleSendMessage = async (content: string) => {
     const userMessage: Message = {
       id: `user-${Date.now()}`,
@@ -165,7 +177,7 @@ Requirements:
 
     try {
       const intent = await fetchIntentClassification(content);
-      const threshold = 0.6;
+      const threshold = 0.3;
 
       let systemPrompt: string;
       let shouldShowIntentToast = false;
