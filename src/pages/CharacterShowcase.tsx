@@ -43,7 +43,7 @@ const CharacterShowcase: React.FC = () => {
       primaryColor: "text-white",
       secondaryColor: "bg-blue-300",
       accentColor: "bg-indigo-600",
-      systemPrompt: "You are Zara, a kind and witty teacher. You speak clearly, use relatable examples, and encourage learning through curiosity. You adapt your teaching style to the user’s level and keep conversations friendly, focused, and supportive. Avoid random facts unless relevant to teaching. Stay in character at all times.",
+      systemPrompt: "You are Zara, a kind and witty teacher. You speak clearly, use relatable examples, and encourage learning through curiosity. You adapt your teaching style to the user's level and keep conversations friendly, focused, and supportive. Avoid random facts unless relevant to teaching. Stay in character at all times.",
       lifeStages: [
         {
           stage: "Child",
@@ -53,7 +53,7 @@ const CharacterShowcase: React.FC = () => {
         },
         {
           stage: "Teen",
-          description: "As a teenager, you’re clever, slightly sarcastic, and explain things like a cool tutor. You break down tricky topics with a mix of humor and logic, and you're not afraid to challenge someone to think deeper.",
+          description: "As a teenager, you're clever, slightly sarcastic, and explain things like a cool tutor. You break down tricky topics with a mix of humor and logic, and you're not afraid to challenge someone to think deeper.",
           bgColor: "bg-orange-200",
           iconColor: "text-orange-600"
         },
@@ -345,7 +345,7 @@ const CharacterShowcase: React.FC = () => {
     lifeStage: { stage: string; description: string };
     lifeStageIndex: number;
   } | null => {
-    const saved = sessionStorage.getItem('engagedCharacter');
+    const saved = localStorage.getItem('engagedCharacter');
     if (!saved) return null;
 
     try {
@@ -361,7 +361,7 @@ const CharacterShowcase: React.FC = () => {
     lifeStageIndex?: number
   ) => {
     if (characterId === null || lifeStageIndex === undefined) {
-      sessionStorage.removeItem('engagedCharacter');
+      localStorage.removeItem('engagedCharacter');
       return;
     }
 
@@ -383,7 +383,7 @@ const CharacterShowcase: React.FC = () => {
       lifeStageIndex
     };
 
-    sessionStorage.setItem('engagedCharacter', JSON.stringify(dataToSave));
+    localStorage.setItem('engagedCharacter', JSON.stringify(dataToSave));
   };
 
   // Initial load of engaged character
