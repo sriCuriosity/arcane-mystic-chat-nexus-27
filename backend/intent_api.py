@@ -11,7 +11,6 @@ import re
 
 app = FastAPI()
 
-# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Allows all origins
@@ -333,7 +332,6 @@ def preprocess_text(text: str) -> str:
     return text
 
 def extract_keywords(text: str) -> List[str]:
-    """Extract important keywords from text"""
     # Common words to exclude
     stop_words = {'i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'ourselves', 'you', 'your', 'yours',
                  'yourself', 'yourselves', 'he', 'him', 'his', 'himself', 'she', 'her', 'hers',
@@ -351,7 +349,7 @@ def extract_keywords(text: str) -> List[str]:
     return keywords
 
 def calculate_context_similarity(query: str, intention: str, tools: List[str]) -> float:
-    """Calculate similarity considering context from tools and intention"""
+    
     # Combine intention and tools for context
     context = f"{intention} {' '.join(tools)}"
     
@@ -374,7 +372,6 @@ def semantic_search(query: str, intentions: List[Dict], threshold: float) -> Dic
         processed_query = preprocess_text(query)
         query_keywords = extract_keywords(processed_query)
         
-        # Calculate similarities with context awareness
         similarities = []
         for item in intentions:
             # Basic semantic similarity
@@ -390,7 +387,6 @@ def semantic_search(query: str, intentions: List[Dict], threshold: float) -> Dic
                 item["tools"]
             )
             
-            # Keyword matching bonus
             keyword_matches = sum(1 for keyword in query_keywords 
                                 if keyword in item["intention"].lower() or 
                                 any(keyword in tool.lower() for tool in item["tools"]))
