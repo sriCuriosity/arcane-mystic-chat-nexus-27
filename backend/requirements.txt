@@ -9,7 +9,10 @@ numpy
 sentence-transformers
 scikit-learn
 torch
-flask==3.0.2
-flask-cors==4.0.0
-requests==2.31.0
-python-dotenv==1.0.1
+flask
+flask-cors
+requests
+python-dotenv
+pandas
+tqdm
+transformers

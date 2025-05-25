@@ -1,5 +1,15 @@
-import { useEffect, useRef } from 'react';
-import { X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { X, Trash2 } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { useTheme } from "@/contexts/ThemeContext";
+import { cn } from "@/lib/utils";
+
+interface SavedImage {
+  id: number;
+  data: string;
+  timestamp: string;
+  title: string;
+}
 
 interface LibraryModalProps {
   isOpen: boolean;
@@ -8,6 +18,8 @@ interface LibraryModalProps {
 
 const LibraryModal = ({ isOpen, onClose }: LibraryModalProps) => {
   const modalRef = useRef<HTMLDivElement>(null);
+  const [savedImages, setSavedImages] = useState<SavedImage[]>([]);
+  const { isDarkMode } = useTheme();
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -19,6 +31,9 @@ const LibraryModal = ({ isOpen, onClose }: LibraryModalProps) => {
     if (isOpen) {
       document.addEventListener('keydown', handleEscape);
       document.body.style.overflow = 'hidden';
+      // Load saved images when modal opens
+      const images = JSON.parse(localStorage.getItem('savedImages') || '[]');
+      setSavedImages(images);
     }
 
     return () => {
@@ -26,6 +41,16 @@ const LibraryModal = ({ isOpen, onClose }: LibraryModalProps) => {
       document.body.style.overflow = 'unset';
     };
   }, [isOpen, onClose]);
+
+  const handleDeleteImage = (id: number) => {
+    const updatedImages = savedImages.filter(img => img.id !== id);
+    localStorage.setItem('savedImages', JSON.stringify(updatedImages));
+    setSavedImages(updatedImages);
+  };
+
+  const handleImageClick = (imageData: string) => {
+    window.open(imageData, '_blank');
+  };
 
   if (!isOpen) return null;
 
@@ -40,44 +65,87 @@ const LibraryModal = ({ isOpen, onClose }: LibraryModalProps) => {
       {/* Modal */}
       <div
         ref={modalRef}
-        className="relative w-full max-w-4xl max-h-[90vh] bg-white rounded-2xl shadow-2xl transform transition-all duration-300 ease-out"
+        className={cn(
+          "relative w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl transform transition-all duration-300 ease-out",
+          isDarkMode ? "bg-slate-800" : "bg-white"
+        )}
         style={{
           animation: 'slideIn 0.3s ease-out forwards',
         }}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-2xl font-semibold text-gray-800">Library</h2>
+          <h2 className={cn("text-2xl font-semibold", isDarkMode ? "text-white" : "text-gray-800")}>
+            Saved Study Tools
+          </h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            className={cn(
+              "p-2 rounded-full transition-colors",
+              isDarkMode ? "hover:bg-slate-700" : "hover:bg-gray-100"
+            )}
           >
-            <X className="w-5 h-5 text-gray-500" />
+            <X className={cn("w-5 h-5", isDarkMode ? "text-gray-300" : "text-gray-500")} />
           </button>
         </div>
 
         {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-8rem)]">
-          <div className="space-y-6">
-            {/* Placeholder content - can be replaced with actual content later */}
+          {savedImages.length === 0 ? (
+            <div className={cn(
+              "text-center py-8",
+              isDarkMode ? "text-gray-300" : "text-gray-500"
+            )}>
+              No saved study tools yet
+            </div>
+          ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[1, 2, 3, 4, 5, 6].map((item) => (
+              {savedImages.map((image) => (
                 <div
-                  key={item}
-                  className="p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer"
+                  key={image.id}
+                  className={cn(
+                    "relative group rounded-xl overflow-hidden",
+                    isDarkMode ? "bg-slate-700" : "bg-gray-50"
+                  )}
                 >
-                  <div className="h-32 bg-gray-200 rounded-lg mb-3 animate-pulse" />
-                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2 animate-pulse" />
-                  <div className="h-4 bg-gray-200 rounded w-1/2 animate-pulse" />
+                  <img
+                    src={image.data}
+                    alt={image.title}
+                    className="w-full h-48 object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                    onClick={() => handleImageClick(image.data)}
+                  />
+                  <div className="p-3">
+                    <h3 className={cn(
+                      "text-sm font-medium mb-1",
+                      isDarkMode ? "text-white" : "text-gray-800"
+                    )}>
+                      {image.title}
+                    </h3>
+                    <p className={cn(
+                      "text-xs",
+                      isDarkMode ? "text-gray-400" : "text-gray-500"
+                    )}>
+                      {new Date(image.timestamp).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => handleDeleteImage(image.id)}
+                  >
+                    <Trash2 className="w-4 h-4 text-red-500" />
+                  </Button>
                 </div>
               ))}
             </div>
-          </div>
+          )}
         </div>
       </div>
 
       {/* Add keyframes for slide-in animation */}
-      <style jsx>{`
+      <style>
+        {`
         @keyframes slideIn {
           from {
             opacity: 0;
@@ -88,7 +156,8 @@ const LibraryModal = ({ isOpen, onClose }: LibraryModalProps) => {
             transform: translateY(0);
           }
         }
-      `}</style>
+        `}
+      </style>
     </div>
   );
 };

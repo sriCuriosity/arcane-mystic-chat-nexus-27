@@ -31,7 +31,11 @@ const SearchModal = ({
     message.content.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const formatTimestamp = (date: Date) => {
+  const formatTimestamp = (dateInput: string | number | Date) => {
+    const date = dateInput instanceof Date ? dateInput : new Date(dateInput);
+    if (isNaN(date.getTime())) {
+      return "";
+    }
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 

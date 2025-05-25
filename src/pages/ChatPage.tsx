@@ -85,7 +85,7 @@ const ChatPage = () => {
       const response = await axios.post(`${BACKEND_API_URL1}/classify-intent`, {
         prompt,
       });
-      console.log("Intent API response:", response.data);  // <-- Log intent API response
+      console.log("Intent API response:", response.data);  
       return response.data;
     } catch (error) {
       console.error("Intent classification failed:", error);
@@ -94,8 +94,15 @@ const ChatPage = () => {
   };
 
   const fetchSonarAIResponse = async (userMessage: string, systemContent: string): Promise<string> => {
+    let selectedModel = "sonar";
+    try {
+      selectedModel = localStorage.getItem("selectedModel") || "sonar";
+    } catch (error) {
+      console.error("Error getting selected model:", error);
+    }
+
     const requestPayload = {
-      model: "sonar",
+      model: selectedModel,
       messages: [
         { role: "system", content: systemContent },
         { role: "user", content: userMessage },
@@ -200,68 +207,19 @@ Behavior Guidelines:
       }
 
       const toastId = toast.loading('Converting to speech...');
-
-      const response = await fetch(`http://127.0.0.1:3000/speak`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ text }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.details || 'Speech conversion failed');
-      }
-
-      const audioBlob = await response.blob();
-      const audioUrl = URL.createObjectURL(audioBlob);
-
-      // Create new audio element
-      const audio = new Audio(audioUrl);
-      audioRef.current = audio;
-
-      // Clean up the URL object after audio finishes playing
-      audio.onended = () => {
-        URL.revokeObjectURL(audioUrl);
-        setCurrentlyPlaying(null);
-      };
-
-      toast.dismiss(toastId);
-      toast.success('Playing response');
-
-      setCurrentlyPlaying(messageId);
-      await audio.play();
-    } catch (error) {
-      console.error('Error converting to speech:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to convert response to speech');
-      setCurrentlyPlaying(null);
-    }
-  };
-
-  const convertToSpeech = async (text: string, messageId: string) => {
-    try {
-      // If this message is already playing, stop it
-      if (currentlyPlaying === messageId) {
-        if (audioRef.current) {
-          audioRef.current.pause();
-          audioRef.current.currentTime = 0;
-        }
-        setCurrentlyPlaying(null);
-        return;
-      }
-
-      // Stop any currently playing audio
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
-      }
-
-      const toastId = toast.loading('Converting to speech...');
       
       // Get the engaged character data from localStorage
       const engagedCharacter = localStorage.getItem('engagedCharacter');
-      const characterData = engagedCharacter ? JSON.parse(engagedCharacter) : null;
+      let characterData = null;
+      
+      try {
+        if (engagedCharacter) {
+          const parsedData = JSON.parse(engagedCharacter);
+          characterData = Array.isArray(parsedData) && parsedData.length > 0 ? parsedData[0] : null;
+        }
+      } catch (error) {
+        console.error('Error parsing character data:', error);
+      }
       
       const response = await fetch(`${BACKEND_API_URL}/speak`, {
         method: 'POST',
@@ -270,9 +228,12 @@ Behavior Guidelines:
         },
         body: JSON.stringify({ 
           text,
-          character: {
+          character: characterData ? {
             role: characterData.role,
             voiceId: characterData.voiceId
+          } : {
+            role: 'adult',  // Default role
+            voiceId: 'EXAVITQu4vr4xnSDxMaL'  // Default voice ID for adult
           }
         }),
       });
@@ -342,11 +303,24 @@ Behavior Guidelines:
 
       let aiParsed: { response: string; code: string } = { response: aiRawContent, code: "" };
       try {
-        const jsonStart = aiRawContent.indexOf("{");
-        const jsonString = jsonStart >= 0 ? aiRawContent.slice(jsonStart) : aiRawContent;
-        aiParsed = JSON.parse(jsonString);
+        // First try to find JSON content within markdown code blocks
+        const jsonMatch = aiRawContent.match(/```(?:json)?\s*({[\s\S]*?})\s*```/);
+        if (jsonMatch) {
+          const jsonStr = jsonMatch[1].trim();
+          aiParsed = JSON.parse(jsonStr);
+        } else {
+          // If no code block found, try to parse the entire content as JSON
+          const jsonStart = aiRawContent.indexOf("{");
+          if (jsonStart >= 0) {
+            const jsonString = aiRawContent.slice(jsonStart);
+            // Clean the string of any control characters
+            const cleanedJson = jsonString.replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+            aiParsed = JSON.parse(cleanedJson);
+          }
+        }
       } catch (err) {
         console.warn("Failed to parse AI response as JSON, using raw content.", err);
+        // If parsing fails, use the raw content as the response
         aiParsed = { response: aiRawContent, code: "" };
       }
 

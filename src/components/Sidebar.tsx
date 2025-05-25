@@ -67,17 +67,18 @@ const Sidebar = ({
   
   const [selectedModel, setSelectedModel] = useState(() => {
     try {
-      return localStorage.getItem("selectedModel") || "GPT-4 Turbo";
+      return localStorage.getItem("selectedModel") || "sonar";
     } catch (error) {
-      return "GPT-4 Turbo";
+      return "sonar";
     }
   });
 
   const models = [
-    { name: "GPT-4 Turbo", icon: Brain, color: "text-emerald-600" },
-    { name: "Claude-3 Sonnet", icon: Sparkles, color: "text-purple-600" },
-    { name: "Gemini Pro", icon: Star, color: "text-blue-600" },
-    { name: "LLaMA 2", icon: Code2, color: "text-orange-600" }
+    { name: "sonar", icon: Brain, color: "text-emerald-600" },
+    { name: "sonar-pro", icon: Sparkles, color: "text-purple-600" },
+    { name: "sonar-reasoning", icon: Star, color: "text-blue-600" },
+    { name: "sonar-reasoning-pro", icon: Code2, color: "text-orange-600" },
+    { name: "sonar-deep-research", icon: Brain, color: "text-green-600" }
   ];
 
   const { isDarkMode } = useTheme();
