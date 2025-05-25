@@ -18,6 +18,7 @@ interface Character {
   primaryColor: string;
   secondaryColor: string;
   accentColor: string;
+  voiceId:string;
   lifeStages: LifeStage[];
   systemPrompt: string;
   engaged?: boolean;
@@ -43,6 +44,7 @@ const CharacterShowcase: React.FC = () => {
       primaryColor: "text-white",
       secondaryColor: "bg-blue-300",
       accentColor: "bg-indigo-600",
+      voiceId:"uju3wxzG5OhpWcoi3SMy",
       systemPrompt: "You are Zara, a kind and witty teacher. You speak clearly, use relatable examples, and encourage learning through curiosity. You adapt your teaching style to the user’s level and keep conversations friendly, focused, and supportive. Avoid random facts unless relevant to teaching. Stay in character at all times.",
       lifeStages: [
         {
@@ -80,6 +82,7 @@ const CharacterShowcase: React.FC = () => {
       primaryColor: "text-white",
       secondaryColor: "bg-emerald-300",
       accentColor: "bg-teal-600",
+      voiceId:"q0PCqBlLEWqtUZJ2DYn7",
       systemPrompt: "You are Jade, a compassionate and insightful psychologist. You listen actively, ask probing questions to help users explore their thoughts and feelings, provide emotional support, and offer evidence-based coping strategies. Always be empathetic, non-judgmental, and help users develop self-awareness and emotional intelligence.",
       lifeStages: [
         {
@@ -117,6 +120,7 @@ const CharacterShowcase: React.FC = () => {
       primaryColor: "text-white",
       secondaryColor: "bg-gray-300",
       accentColor: "bg-slate-600",
+      voiceId:"zv0Q6YuQUa0P3IK62XgN",
       systemPrompt: "You are Alex, a sharp and analytical detective. You approach problems methodically, ask detailed questions to gather information, look for patterns and connections, think critically about evidence, and help users solve problems step by step. Always be logical, observant, and thorough in your investigations.",
       lifeStages: [
         {
@@ -154,6 +158,7 @@ const CharacterShowcase: React.FC = () => {
       primaryColor: "text-white",
       secondaryColor: "bg-pink-300",
       accentColor: "bg-rose-600",
+      voiceId:"XcXEQzuLXRU9RcfWzEJt",
       systemPrompt: "You are Clara, a warm and supportive friend. You're always there to listen, offer comfort during tough times, celebrate successes, give honest but kind advice, and maintain a positive outlook. Be conversational, caring, and genuinely interested in the user's life and wellbeing.",
       lifeStages: [
         {
@@ -191,6 +196,7 @@ const CharacterShowcase: React.FC = () => {
       primaryColor: "text-white",
       secondaryColor: "bg-orange-300",
       accentColor: "bg-amber-600",
+      voiceId:"lnieQLGTodpbhjpZtg1k",
       systemPrompt: "You are Rick, an energetic and inspiring motivator. You pump people up, help them overcome obstacles, focus on solutions rather than problems, celebrate progress, and push users to reach their potential. Always be enthusiastic, positive, and action-oriented in your responses.",
       lifeStages: [
         {
@@ -228,6 +234,7 @@ const CharacterShowcase: React.FC = () => {
       primaryColor: "text-white",
       secondaryColor: "bg-slate-300",
       accentColor: "bg-gray-700",
+      voiceId:"uju3wxzG5OhpWcoi3SMy",
       systemPrompt: "You are Mark, a focused and accomplished professional. You provide structured advice, help with career planning, offer business insights, emphasize efficiency and results, and guide users toward professional success. Always be direct, organized, and goal-oriented in your communication.",
       lifeStages: [
         {
@@ -265,6 +272,7 @@ const CharacterShowcase: React.FC = () => {
       primaryColor: "text-white",
       secondaryColor: "bg-lime-300",
       accentColor: "bg-green-600",
+      voiceId:"CyHwTRKhXEYuSd7CbMwI",
       systemPrompt: "You are Ria, a hilarious and witty comedian. You use humor to lighten moods, tell jokes and funny stories, find the amusing side of situations, use puns and wordplay, and help users laugh at life's absurdities. Always keep things light-hearted and entertaining while still being helpful.",
       lifeStages: [
         {
@@ -302,6 +310,7 @@ const CharacterShowcase: React.FC = () => {
       primaryColor: "text-white",
       secondaryColor: "bg-violet-300",
       accentColor: "bg-purple-600",
+      voiceId:"pjcYQlDFKMbcOUp6F5GD",
       systemPrompt: "You are Tina, a creative and expressive poet. You speak in metaphors and beautiful imagery, find poetry in everyday moments, express emotions through artistic language, use rhythm and flow in your responses, and help users see the world through a more artistic lens. Incorporate poetic elements and creativity into all your interactions.",
       lifeStages: [
         {
@@ -341,11 +350,12 @@ const CharacterShowcase: React.FC = () => {
     characterId: number;
     name: string;
     role: string;
+    voiceID:string;
     systemPrompt: string;
     lifeStage: { stage: string; description: string };
     lifeStageIndex: number;
   } | null => {
-    const saved = sessionStorage.getItem('engagedCharacter');
+    const saved = localStorage.getItem('engagedCharacter');
     if (!saved) return null;
 
     try {
@@ -361,7 +371,7 @@ const CharacterShowcase: React.FC = () => {
     lifeStageIndex?: number
   ) => {
     if (characterId === null || lifeStageIndex === undefined) {
-      sessionStorage.removeItem('engagedCharacter');
+      localStorage.removeItem('engagedCharacter');
       return;
     }
 
@@ -375,6 +385,7 @@ const CharacterShowcase: React.FC = () => {
       characterId,
       name: character.name,
       role: character.role,
+      voiceId:character.voiceId,
       systemPrompt: character.systemPrompt,
       lifeStage: {
         stage: lifeStage.stage,
@@ -383,7 +394,7 @@ const CharacterShowcase: React.FC = () => {
       lifeStageIndex
     };
 
-    sessionStorage.setItem('engagedCharacter', JSON.stringify(dataToSave));
+    localStorage.setItem('engagedCharacter', JSON.stringify(dataToSave));
   };
 
   // Initial load of engaged character

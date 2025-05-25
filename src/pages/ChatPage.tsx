@@ -1,15 +1,18 @@
 import axios from "axios";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import AppHeader from "@/components/AppHeader";
 import Sidebar from "@/components/Sidebar";
 import ChatArea from "@/components/ChatArea";
 import MessageInput from "@/components/MessageInput";
 import { Message } from "@/types/chat";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Play, Pause } from "lucide-react";
 
 const SONAR_API_URL = "https://api.perplexity.ai/chat/completions";
 const SONAR_API_TOKEN = "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";
-const BACKEND_API_URL = "http://localhost:8081";
+const BACKEND_API_URL1 = "http://localhost:8000";
+const BACKEND_API_URL = "http://localhost:3000";
 
 interface IntentResult {
   matched_intention: string | null;
@@ -26,6 +29,7 @@ interface CharacterData {
   name: string;
   role: string;
   systemPrompt: string;
+  voiceId: string;
   lifeStage: {
     stage: string;
     description: string;
@@ -37,6 +41,8 @@ const ChatPage = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [characterData, setCharacterData] = useState<CharacterData | null>(null);
+  const [currentlyPlaying, setCurrentlyPlaying] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     const savedCharacter = sessionStorage.getItem('engagedCharacter');
@@ -54,7 +60,7 @@ const ChatPage = () => {
 
   const fetchIntentClassification = async (prompt: string): Promise<IntentResult> => {
     try {
-      const response = await axios.post(`${BACKEND_API_URL}/classify-intent`, {
+      const response = await axios.post(`${BACKEND_API_URL1}/classify-intent`, {
         prompt,
       });
       console.log("Intent API response:", response.data);  // <-- Log intent API response
@@ -149,7 +155,80 @@ Requirements:
     return `You are a friendly AI companion. Respond naturally and helpfully with a conversational tone.`;
   }  
 
+  const convertToSpeech = async (text: string, messageId: string) => {
+    try {
+      // If this message is already playing, stop it
+      if (currentlyPlaying === messageId) {
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current.currentTime = 0;
+        }
+        setCurrentlyPlaying(null);
+        return;
+      }
+
+      // Stop any currently playing audio
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+
+      const toastId = toast.loading('Converting to speech...');
+      
+      // Get the engaged character data from localStorage
+      const engagedCharacter = localStorage.getItem('engagedCharacter');
+      const characterData = engagedCharacter ? JSON.parse(engagedCharacter) : null;
+      
+      const response = await fetch(`${BACKEND_API_URL}/speak`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          text,
+          character: {
+            role: characterData.role,
+            voiceId: characterData.voiceId
+          }
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.details || 'Speech conversion failed');
+      }
+
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      
+      // Create new audio element
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+      
+      // Clean up the URL object after audio finishes playing
+      audio.onended = () => {
+        URL.revokeObjectURL(audioUrl);
+        setCurrentlyPlaying(null);
+      };
+
+      toast.dismiss(toastId);
+      toast.success('Playing response');
+      
+      setCurrentlyPlaying(messageId);
+      await audio.play();
+    } catch (error) {
+      console.error('Error converting to speech:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to convert response to speech');
+      setCurrentlyPlaying(null);
+    }
+  };
+
   const handleSendMessage = async (content: string) => {
+    if (!content.trim()) {
+      toast.error('Please enter a message');
+      return;
+    }
+
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       content,
@@ -162,7 +241,7 @@ Requirements:
 
     try {
       const intent = await fetchIntentClassification(content);
-      const threshold = 0.6;
+      const threshold = 0.3;
 
       let systemPrompt: string;
       let shouldShowIntentToast = false;
@@ -195,11 +274,12 @@ Requirements:
 
     } catch (error) {
       console.error("Error handling message:", error);
+      const errorMessage = error instanceof Error ? error.message : "Sorry, I couldn't process your request right now.";
       setMessages((prev) => [
         ...prev,
         {
           id: `ai-${Date.now()}`,
-          content: "Sorry, I couldn't process your request right now.",
+          content: errorMessage,
           sender: "ai",
           timestamp: new Date(),
           starred: false,
@@ -232,6 +312,29 @@ Requirements:
 
   const starredMessages = messages.filter((msg) => msg.starred);
 
+  const renderMessage = (message: Message) => {
+    const isPlaying = currentlyPlaying === message.id;
+    
+    return (
+      <div className="flex items-start gap-2 p-4">
+        <div className="flex-1">
+          <div className="font-semibold">{message.sender === 'user' ? 'You' : 'AI'}</div>
+          <div className="mt-1">{message.content}</div>
+        </div>
+        {message.sender === 'ai' && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => convertToSpeech(message.content, message.id)}
+            className="flex-shrink-0"
+          >
+            {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+          </Button>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="h-screen flex flex-col overflow-hidden">
       <AppHeader />
@@ -248,11 +351,13 @@ Requirements:
         />
 
         <div className="flex-grow flex flex-col">
-          <ChatArea
-            messages={messages}
-            isLoading={isLoading}
-            onToggleStar={toggleStarMessage}
-          />
+          <div className="flex-1 overflow-y-auto p-4">
+            {messages.map((message) => (
+              <div key={message.id}>
+                {renderMessage(message)}
+              </div>
+            ))}
+          </div>
           <MessageInput onSendMessage={handleSendMessage} />
         </div>
       </div>
