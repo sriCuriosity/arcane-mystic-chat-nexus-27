@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Message } from "@/types/chat";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -40,7 +41,7 @@ const SearchModal = ({
 
   const handleMessageClick = (messageId: string) => {
     onMessageClick(messageId);
-    onClose(); // Close the modal after clicking a message
+    onClose();
   };
 
   const renderMessageItem = (message: Message) => (
@@ -55,7 +56,7 @@ const SearchModal = ({
       </Avatar>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between mb-1">
-          <span className="text-sm font-medium">Mystical AI</span>
+          <span className="text-sm font-medium">AI Assistant</span>
           <span className="text-xs text-muted-foreground">
             {formatTimestamp(message.timestamp)}
           </span>
@@ -135,4 +136,4 @@ const SearchModal = ({
   );
 };
 
-export default SearchModal; 
+export default SearchModal;

@@ -45,7 +45,7 @@ const CharacterShowcase: React.FC = () => {
       secondaryColor: "bg-blue-300",
       accentColor: "bg-indigo-600",
       voiceId:"uju3wxzG5OhpWcoi3SMy",
-      systemPrompt: "You are Zara, a kind and witty teacher. You speak clearly, use relatable examples, and encourage learning through curiosity. You adapt your teaching style to the user’s level and keep conversations friendly, focused, and supportive. Avoid random facts unless relevant to teaching. Stay in character at all times.",
+      systemPrompt: "You are Zara, a kind and witty teacher. You speak clearly, use relatable examples, and encourage learning through curiosity. You adapt your teaching style to the user's level and keep conversations friendly, focused, and supportive. Avoid random facts unless relevant to teaching. Stay in character at all times.",
       lifeStages: [
         {
           stage: "Child",
@@ -55,7 +55,7 @@ const CharacterShowcase: React.FC = () => {
         },
         {
           stage: "Teen",
-          description: "As a teenager, you’re clever, slightly sarcastic, and explain things like a cool tutor. You break down tricky topics with a mix of humor and logic, and you're not afraid to challenge someone to think deeper.",
+          description: "As a teenager, you're clever, slightly sarcastic, and explain things like a cool tutor. You break down tricky topics with a mix of humor and logic, and you're not afraid to challenge someone to think deeper.",
           bgColor: "bg-orange-200",
           iconColor: "text-orange-600"
         },
@@ -356,11 +356,24 @@ const CharacterShowcase: React.FC = () => {
     lifeStageIndex: number;
   } | null => {
     const saved = localStorage.getItem('engagedCharacter');
-    if (!saved) return null;
+    if (!saved) {
+      // Initialize with empty array if no data exists
+      localStorage.setItem('engagedCharacter', JSON.stringify([]));
+      return null;
+    }
 
     try {
-      return JSON.parse(saved);
+      const data = JSON.parse(saved);
+      // If data is not an array, initialize it
+      if (!Array.isArray(data)) {
+        localStorage.setItem('engagedCharacter', JSON.stringify([]));
+        return null;
+      }
+      // Return the first engaged character if any exists
+      return data.length > 0 ? data[0] : null;
     } catch {
+      // If there's any error, initialize with empty array
+      localStorage.setItem('engagedCharacter', JSON.stringify([]));
       return null;
     }
   };
@@ -371,7 +384,7 @@ const CharacterShowcase: React.FC = () => {
     lifeStageIndex?: number
   ) => {
     if (characterId === null || lifeStageIndex === undefined) {
-      localStorage.removeItem('engagedCharacter');
+      localStorage.setItem('engagedCharacter', JSON.stringify([]));
       return;
     }
 
@@ -394,7 +407,8 @@ const CharacterShowcase: React.FC = () => {
       lifeStageIndex
     };
 
-    localStorage.setItem('engagedCharacter', JSON.stringify(dataToSave));
+    // Store as an array with a single item
+    localStorage.setItem('engagedCharacter', JSON.stringify([dataToSave]));
   };
 
   // Initial load of engaged character

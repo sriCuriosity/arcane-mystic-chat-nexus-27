@@ -45,16 +45,38 @@ const ChatPage = () => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    const savedCharacter = sessionStorage.getItem('engagedCharacter');
+    const savedCharacter = localStorage.getItem("engagedCharacter");
     if (savedCharacter) {
       try {
         const parsedData = JSON.parse(savedCharacter);
-        setCharacterData(parsedData);
+        // Handle the array structure and get the first character
+        const characterData = Array.isArray(parsedData) && parsedData.length > 0 ? parsedData[0] : null;
+        if (characterData) {
+          setCharacterData(characterData);
+        }
       } catch (error) {
-        console.error('Error parsing character data:', error);
+        console.error("Error parsing character data:", error);
       }
     }
   }, []);
+
+  // Load messages and starred status from localStorage on component mount
+  useEffect(() => {
+    const savedMessages = localStorage.getItem("chatMessages");
+    if (savedMessages) {
+      try {
+        const parsedMessages = JSON.parse(savedMessages);
+        setMessages(parsedMessages);
+      } catch (error) {
+        console.error("Error parsing saved messages:", error);
+      }
+    }
+  }, []);
+
+  // Save messages to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem("chatMessages", JSON.stringify(messages));
+  }, [messages]);
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
@@ -71,10 +93,7 @@ const ChatPage = () => {
     }
   };
 
-  const fetchSonarAIResponse = async (
-    userMessage: string,
-    systemContent: string
-  ): Promise<string> => {
+  const fetchSonarAIResponse = async (userMessage: string, systemContent: string): Promise<string> => {
     const requestPayload = {
       model: "sonar",
       messages: [
@@ -83,13 +102,7 @@ const ChatPage = () => {
       ],
     };
 
-    console.log("Sending request to Sonar AI:");
-    console.log("URL:", SONAR_API_URL);
-    console.log("Headers:", {
-      Authorization: `Bearer ${SONAR_API_TOKEN}`,
-      "Content-Type": "application/json",
-    });
-    console.log("Body:", JSON.stringify(requestPayload, null, 2));
+    console.log("Sending request to Sonar AI:", requestPayload);
 
     const response = await fetch(SONAR_API_URL, {
       method: "POST",
@@ -104,56 +117,127 @@ const ChatPage = () => {
 
     const data = await response.json();
 
-    console.log("Sonar AI API response:", data); // <-- Log Sonar API response
+    console.log("Sonar AI API response:", data);
 
     return data.choices?.[0]?.message?.content || "No response from Sonar AI.";
   };
 
+  // ** KEEP YOUR ORIGINAL createOptimizedSystemPrompt UNCHANGED **
   const createOptimizedSystemPrompt = (intent: IntentResult) => {
-    const toolsList = intent.recommended_tools
-      .slice(0, 3)
-      .map(tool => `${tool.name}`)
-      .join(", ");
+    if (!intent.recommended_tools.length) {
+      // fallback prompt if no tools recommended
+      return `Return a JSON with two fields:
 
-    return `Intent: ${intent.matched_intention}
-Tools: ${toolsList}
+1. **response**: Helpful answer to user's intent: "${intent.matched_intention || "Unknown"}".
+2. **code**: HTML + CSS code for a static website illustrating a useful method to address the user's query.
 
-Return JSON:
-{
-  "response": "Brief explanation (2-3 sentences max)",
-  "code": "Complete HTML with inline CSS/JS for interactive ${intent.matched_intention} tool using ${toolsList}. Make it functional, responsive, and visually appealing."
-}
+Be specific and relevant to the task.`;
+    }
 
-Requirements:
-- Self-contained HTML
-- Interactive elements
-- Clean, modern design
-- Mobile-friendly
-- No external dependencies`;
+    // Pick top tool with highest confidence
+    const topTool = intent.recommended_tools.reduce((prev, curr) =>
+      curr.confidence > prev.confidence ? curr : prev
+    );
+
+    return `You are a helpful AI assistant.
+
+User intent: "${intent.matched_intention}"
+Top recommended tool:
+- Name: ${topTool.name}
+- Description: ${topTool.description}
+
+Return a JSON with two fields:
+
+1. "response": A helpful, concise explanation answering the user's intent.
+2. "code": Complete HTML + CSS code for a static website section that visually demonstrates and explains the method "${topTool.name}" to help the user achieve their goal.
+<html>...interactive flashcards or roadmap layout...</html>
+
+Make the HTML self-contained, clean, modern, responsive, and visually appealing. Avoid external dependencies.
+
+Only return the JSON object, no extra text.`;
   };
 
+  // ** KEEP YOUR ORIGINAL createCasualSystemPrompt UNCHANGED **
   const createCasualSystemPrompt = () => {
-    if (characterData) {
+    if (characterData && characterData.name && characterData.role && characterData.systemPrompt) {
       return `
-  You are ${characterData.name}, a ${characterData.role}.
-  
-  Core Personality:
-  ${characterData.systemPrompt}
-  
-  Current Life Stage: "${characterData.lifeStage.stage}"
-  ${characterData.lifeStage.description}
-  
-  Behavior Guidelines:
-  - Stay in character and reflect both your core personality and current life stage.
-  - Respond briefly and clearly, avoiding unnecessary facts or digressions.
-  - Use language appropriate to your life stage and role.
-  - Keep the tone consistent (e.g., playful for child, witty for teen, professional for adult, wise for senior).
-  - Encourage learning with supportive and engaging answers.
+You are ${characterData.name}, a ${characterData.role}.
+
+Core Personality:
+${characterData.systemPrompt}
+
+${characterData.lifeStage ? `Current Life Stage: "${characterData.lifeStage.stage}"
+${characterData.lifeStage.description}` : ''}
+
+Behavior Guidelines:
+- Stay in character and reflect both your core personality and current life stage.
+- Respond briefly and clearly, avoiding unnecessary facts or digressions.
+- Use language appropriate to your life stage and role.
+- Keep the tone consistent (e.g., playful for child, witty for teen, professional for adult, wise for senior).
+- Encourage learning with supportive and engaging answers.
       `.trim();
     }
-  
+
     return `You are a friendly AI companion. Respond naturally and helpfully with a conversational tone.`;
-  }  
+  };
+
+  const convertToSpeech = async (text: string, messageId: string) => {
+    try {
+      // If this message is already playing, stop it
+      if (currentlyPlaying === messageId) {
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current.currentTime = 0;
+        }
+        setCurrentlyPlaying(null);
+        return;
+      }
+
+      // Stop any currently playing audio
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+
+      const toastId = toast.loading('Converting to speech...');
+
+      const response = await fetch(`http://127.0.0.1:3000/speak`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.details || 'Speech conversion failed');
+      }
+
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+
+      // Create new audio element
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+
+      // Clean up the URL object after audio finishes playing
+      audio.onended = () => {
+        URL.revokeObjectURL(audioUrl);
+        setCurrentlyPlaying(null);
+      };
+
+      toast.dismiss(toastId);
+      toast.success('Playing response');
+
+      setCurrentlyPlaying(messageId);
+      await audio.play();
+    } catch (error) {
+      console.error('Error converting to speech:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to convert response to speech');
+      setCurrentlyPlaying(null);
+    }
+  };
 
   const convertToSpeech = async (text: string, messageId: string) => {
     try {
@@ -234,6 +318,7 @@ Requirements:
       content,
       sender: "user",
       timestamp: new Date(),
+      starred: false
     };
 
     setMessages((prev) => [...prev, userMessage]);
@@ -253,25 +338,35 @@ Requirements:
         systemPrompt = createCasualSystemPrompt();
       }
 
-      const aiContent = await fetchSonarAIResponse(content, systemPrompt);
+      const aiRawContent = await fetchSonarAIResponse(content, systemPrompt);
+
+      let aiParsed: { response: string; code: string } = { response: aiRawContent, code: "" };
+      try {
+        const jsonStart = aiRawContent.indexOf("{");
+        const jsonString = jsonStart >= 0 ? aiRawContent.slice(jsonStart) : aiRawContent;
+        aiParsed = JSON.parse(jsonString);
+      } catch (err) {
+        console.warn("Failed to parse AI response as JSON, using raw content.", err);
+        aiParsed = { response: aiRawContent, code: "" };
+      }
 
       const aiMessage: Message = {
         id: `ai-${Date.now()}`,
-        content: aiContent,
+        content:
+          aiParsed.response +
+          (aiParsed.code ? `\n\n### Render Code Below ###\n${aiParsed.code}` : ""),
         sender: "ai",
         timestamp: new Date(),
-        starred: false,
+        starred: false
       };
 
       setMessages((prev) => [...prev, aiMessage]);
 
       if (shouldShowIntentToast) {
         toast.success(
-          `🎯 Detected: ${intent.matched_intention} (${Math.round(intent.confidence * 100)}% confidence)`,
-          { duration: 3000 }
+          `🎯 Detected: ${intent.matched_intention} (${Math.round(intent.confidence * 100)}% confidence)`
         );
       }
-
     } catch (error) {
       console.error("Error handling message:", error);
       const errorMessage = error instanceof Error ? error.message : "Sorry, I couldn't process your request right now.";
@@ -336,30 +431,43 @@ Requirements:
   };
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
-      <AppHeader />
-      <div className="flex flex-grow overflow-hidden">
-        <Sidebar
+    <div className="flex h-screen flex-col">
+      <AppHeader onToggleSidebar={toggleSidebar} sidebarOpen={sidebarOpen} />
+      <div className="flex flex-1 overflow-hidden">
+        <Sidebar 
           isOpen={sidebarOpen}
           toggleSidebar={toggleSidebar}
-          starredMessages={starredMessages}
+          starredMessages={messages.filter(msg => msg.starred)}
           messages={messages}
-          onToggleStar={toggleStarMessage}
+          onToggleStar={(messageId) => {
+            setMessages(prev =>
+              prev.map(msg =>
+                msg.id === messageId ? { ...msg, starred: !msg.starred } : msg
+              )
+            );
+          }}
           onMessageClick={(messageId) => {
             console.log("Message clicked:", messageId);
           }}
         />
-
-        <div className="flex-grow flex flex-col">
-          <div className="flex-1 overflow-y-auto p-4">
-            {messages.map((message) => (
-              <div key={message.id}>
-                {renderMessage(message)}
-              </div>
-            ))}
+        <main className="flex flex-col flex-grow overflow-y-auto">
+          <ChatArea 
+            messages={messages} 
+            isLoading={isLoading}
+            onToggleStar={(messageId) => {
+              setMessages(prev =>
+                prev.map(msg =>
+                  msg.id === messageId ? { ...msg, starred: !msg.starred } : msg
+                )
+              );
+            }}
+            onPlayMessage={(messageId, content) => convertToSpeech(content, messageId)}
+            currentlyPlaying={currentlyPlaying}
+          />
+          <div className="flex flex-col min-w-0">
+            <MessageInput onSendMessage={handleSendMessage} disabled={isLoading} />
           </div>
-          <MessageInput onSendMessage={handleSendMessage} />
-        </div>
+        </main>
       </div>
     </div>
   );

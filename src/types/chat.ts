@@ -1,11 +1,10 @@
-
-export type Message = {
+export interface Message {
   id: string;
   content: string;
-  sender: 'user' | 'ai';
+  sender: "user" | "ai";
   timestamp: Date;
-  starred?: boolean;
-};
+  starred: boolean;
+}
 
 export type FilterTag = {
   id: string;

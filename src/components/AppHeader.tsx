@@ -1,105 +1,161 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useTheme } from "@/contexts/ThemeContext";
+import { User, Settings, MessageSquare, History, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import {
-  Sun,
-  Moon,
-  ChevronDown,
-  Settings,
-  History,
-  LogOut,
-  HelpCircle,
-  ThumbsUp,
-} from "lucide-react";
+import { useTheme } from "@/contexts/ThemeContext";
+import { Moon, Sun } from "@/components/Icons";
+import LibraryModal from './LibraryModal';
 
-const AppHeader = () => {
-  const { isDarkMode, toggleTheme } = useTheme();
-  const navigate = useNavigate();
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+interface AppHeaderProps {
+  onToggleSidebar: () => void;
+  sidebarOpen: boolean;
+}
+
+const AppHeader = ({ onToggleSidebar, sidebarOpen }: AppHeaderProps) => {
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const navigate = useNavigate();
+  const { isDarkMode, toggleTheme } = useTheme();
+
+  const toggleHistory = () => {
+    if (isLibraryOpen) setIsLibraryOpen(false);
+    setHistoryOpen(!historyOpen);
+  };
+
+  const toggleLibrary = () => {
+    if (historyOpen) setHistoryOpen(false);
+    setIsLibraryOpen(!isLibraryOpen);
+  };
 
   return (
-    <header className="flex justify-between items-center px-6 py-4 border-b border-border bg-background">
-      {/* Left - Logo */}
-      <div className="flex items-center gap-2">
-        <div className="bg-arcane p-2 rounded-md flex items-center justify-center">
-          <span className="text-white font-bold">AL</span>
+    <>
+      <header className="flex justify-between items-center px-6 py-4 border-b border-border/40 bg-background/80 backdrop-blur-md shadow-sm transition-colors duration-200">
+        {/* Left - Brand */}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-2.5 rounded-xl flex items-center justify-center text-white shadow-lg">
+              <MessageSquare size={20} />
+            </div>
+            <div className="hidden sm:block">
+              <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                ChatAI
+              </h1>
+              <p className="text-xs text-muted-foreground">Intelligent Assistant</p>
+            </div>
+          </div>
         </div>
-        <h1 className="text-xl font-bold text-arcane">Arcane Luminaries</h1>
-      </div>
 
-      {/* Right - Controls */}
-      <div className="flex items-center gap-4">
-        {/* History Dropdown */}
-        <DropdownMenu open={isHistoryOpen} onOpenChange={setIsHistoryOpen}>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="gap-1">
-              History
-              <ChevronDown size={16} />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Recent</DropdownMenuLabel>
-            <DropdownMenuItem>
-              <History size={14} className="mr-2" />
-              Solar Design Search
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel>Past</DropdownMenuLabel>
-            <DropdownMenuItem>
-              <Moon size={14} className="mr-2" />
-              Dark Mode Research
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {/* Center - Navigation */}
+        <div className="flex items-center gap-2">
+          <Button
+            variant={historyOpen ? "secondary" : "ghost"}
+            size="sm"
+            onClick={toggleHistory}
+            className="flex items-center gap-2 px-4"
+          >
+            <History size={16} />
+            <span className="hidden sm:inline">History</span>
+            <Badge variant="secondary" className="ml-1 text-xs">5</Badge>
+          </Button>
 
-        {/* Library Dropdown */}
-        <DropdownMenu open={isLibraryOpen} onOpenChange={setIsLibraryOpen}>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="gap-1">
-              Library
-              <ChevronDown size={16} />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem>Saved Templates</DropdownMenuItem>
-            <DropdownMenuItem>Favorite Layouts</DropdownMenuItem>
-            <DropdownMenuItem>My Collections</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          <Button
+            variant={isLibraryOpen ? "secondary" : "ghost"}
+            size="sm"
+            onClick={toggleLibrary}
+            className="flex items-center gap-2 px-4"
+          >
+            <BookOpen size={16} />
+            <span className="hidden sm:inline">Library</span>
+          </Button>
+        </div>
 
-        {/* Help & Feedback */}
-        <Button variant="ghost" size="icon">
-          <HelpCircle size={18} />
-        </Button>
+        {/* Right - User Actions */}
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleTheme}
+            className="h-9 w-9"
+          >
+            {isDarkMode ? (
+              <Sun className="h-5 w-5 text-yellow-500" />
+            ) : (
+              <Moon className="h-5 w-5 text-slate-700" />
+            )}
+          </Button>
 
-        <Button variant="ghost" size="icon">
-          <ThumbsUp size={18} />
-        </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <Settings size={18} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem>
+                <User size={16} className="mr-2" />
+                Profile Settings
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <MessageSquare size={16} className="mr-2" />
+                Chat Preferences
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                Export Conversations
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
-        {/* Theme Toggle */}
-        <Button variant="ghost" size="icon" onClick={toggleTheme}>
-          {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
-        </Button>
-
-        {/* 🤖 Character Button */}
-        <div
-          className="bg-arcane rounded-full w-8 h-8 flex items-center justify-center text-white cursor-pointer"
+          <div className="bg-gradient-to-r from-emerald-500 to-blue-500 rounded-full w-9 h-9 flex items-center justify-center text-white cursor-pointer shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105" 
           onClick={() => navigate("/CharacterShowcase")}
-        >
-          🤖
+          >
+            🤖
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+
+      {/* History Panel */}
+      {historyOpen && (
+        <div className="border-b border-border/40 bg-background/95 backdrop-blur-sm animate-in slide-in-from-top-2 duration-200">
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-lg">Recent Conversations</h3>
+              <Button variant="outline" size="sm">View All</Button>
+            </div>
+            <div className="grid gap-3">
+              {[
+                "How can I optimize my React application?",
+                "What are the best practices for CSS Grid?",
+                "Tell me about React hooks",
+                "How to implement dark mode in React?",
+                "What is the difference between useState and useReducer?",
+              ].map((query, i) => (
+                <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors cursor-pointer group">
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium">{query}</span>
+                    <span className="text-xs text-muted-foreground">{`${(i + 1) * 3} minutes ago`}</span>
+                  </div>
+                  <MessageSquare size={16} className="text-muted-foreground group-hover:text-foreground transition-colors" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <LibraryModal 
+        isOpen={isLibraryOpen} 
+        onClose={() => setIsLibraryOpen(false)} 
+      />
+    </>
   );
 };
 
