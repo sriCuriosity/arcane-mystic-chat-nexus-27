@@ -13,6 +13,8 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Loader2 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 
 interface ChatAreaProps {
   messages: Message[];
@@ -38,23 +40,32 @@ const ChatArea = ({ messages, isLoading, onToggleStar, onPlayMessage, currentlyP
     messages.length > 0 && messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const formatTimestamp = (date: Date) => {
+  const formatTimestamp = (dateInput: string | number | Date) => {
+    const date = dateInput instanceof Date ? dateInput : new Date(dateInput);
+    if (isNaN(date.getTime())) {
+      return "";
+    }
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
 
   const parseAIResponse = (content: string): ParsedResponse | null => {
     try {
-      const jsonMatch = content.match(/```json\s*({[\s\S]*?})\s*```/) || 
+      // First try to find JSON content within markdown code blocks
+      const jsonMatch = content.match(/```(?:json)?\s*({[\s\S]*?})\s*```/) || 
                        content.match(/json\s*({[\s\S]*?})\s*/) ||
                        content.match(/```json\s*({[\s\S]*?})\s*```/);
       
       if (jsonMatch) {
-        const jsonStr = jsonMatch[1];
-        return JSON.parse(jsonStr);
+        const jsonStr = jsonMatch[1].trim();
+        // Clean the string of any control characters
+        const cleanedJson = jsonStr.replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+        return JSON.parse(cleanedJson);
       }
 
+      // If no code block found, try to parse the entire content as JSON
       if (content.trim().startsWith("{") && content.trim().endsWith("}")) {
-        return JSON.parse(content);
+        const cleanedContent = content.trim().replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+        return JSON.parse(cleanedContent);
       }
 
       return null;
@@ -89,8 +100,6 @@ const ChatArea = ({ messages, isLoading, onToggleStar, onPlayMessage, currentlyP
     setDownloadingId(messageId);
     
     try {
-      const html2canvas = (await import('html2canvas')).default;
-      
       const iframe = document.createElement('iframe');
       iframe.style.position = 'absolute';
       iframe.style.left = '-9999px';
@@ -115,14 +124,27 @@ const ChatArea = ({ messages, isLoading, onToggleStar, onPlayMessage, currentlyP
         allowTaint: false,
       });
 
+      const imageData = canvas.toDataURL('image/png');
+      
+      // Store in localStorage
+      const savedImages = JSON.parse(localStorage.getItem('savedImages') || '[]');
+      const newImage = {
+        id: Date.now(),
+        data: imageData,
+        timestamp: new Date().toISOString(),
+        title: `Study Tool ${savedImages.length + 1}`
+      };
+      savedImages.push(newImage);
+      localStorage.setItem('savedImages', JSON.stringify(savedImages));
+
+      // Download the image
       const link = document.createElement('a');
       link.download = `study-tool-${Date.now()}.png`;
-      link.href = canvas.toDataURL('image/png');
+      link.href = imageData;
       link.click();
 
       document.body.removeChild(iframe);
       
-      toast.success("Study tool downloaded as image!", { duration: 3000 });
     } catch (error) {
       console.error("Error downloading as image:", error);
       toast.error("Failed to download as image. Please try again.");
@@ -135,9 +157,6 @@ const ChatArea = ({ messages, isLoading, onToggleStar, onPlayMessage, currentlyP
     setDownloadingId(messageId);
     
     try {
-      const html2canvas = (await import('html2canvas')).default;
-      const jsPDF = (await import('jspdf')).jsPDF;
-      
       const iframe = document.createElement('iframe');
       iframe.style.position = 'absolute';
       iframe.style.left = '-9999px';
