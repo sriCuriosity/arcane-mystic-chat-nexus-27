@@ -346,11 +346,24 @@ const CharacterShowcase: React.FC = () => {
     lifeStageIndex: number;
   } | null => {
     const saved = localStorage.getItem('engagedCharacter');
-    if (!saved) return null;
+    if (!saved) {
+      // Initialize with empty array if no data exists
+      localStorage.setItem('engagedCharacter', JSON.stringify([]));
+      return null;
+    }
 
     try {
-      return JSON.parse(saved);
+      const data = JSON.parse(saved);
+      // If data is not an array, initialize it
+      if (!Array.isArray(data)) {
+        localStorage.setItem('engagedCharacter', JSON.stringify([]));
+        return null;
+      }
+      // Return the first engaged character if any exists
+      return data.length > 0 ? data[0] : null;
     } catch {
+      // If there's any error, initialize with empty array
+      localStorage.setItem('engagedCharacter', JSON.stringify([]));
       return null;
     }
   };
@@ -361,7 +374,7 @@ const CharacterShowcase: React.FC = () => {
     lifeStageIndex?: number
   ) => {
     if (characterId === null || lifeStageIndex === undefined) {
-      localStorage.removeItem('engagedCharacter');
+      localStorage.setItem('engagedCharacter', JSON.stringify([]));
       return;
     }
 
@@ -383,7 +396,8 @@ const CharacterShowcase: React.FC = () => {
       lifeStageIndex
     };
 
-    localStorage.setItem('engagedCharacter', JSON.stringify(dataToSave));
+    // Store as an array with a single item
+    localStorage.setItem('engagedCharacter', JSON.stringify([dataToSave]));
   };
 
   // Initial load of engaged character

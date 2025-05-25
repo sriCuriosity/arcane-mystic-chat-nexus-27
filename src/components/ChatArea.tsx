@@ -2,21 +2,24 @@ import { Message } from "@/types/chat";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Star, Copy, Check, Code, Eye, Download, Image, FileText } from "lucide-react";
+import { Star, Copy, Check, Code, Eye, Download, Image, FileText, Sparkles, Play, Pause } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { Loader2 } from "lucide-react";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface ChatAreaProps {
   messages: Message[];
   isLoading?: boolean;
   onToggleStar: (messageId: string) => void;
+  onPlayMessage: (messageId: string, content: string) => void;
+  currentlyPlaying: string | null;
 }
 
 interface ParsedResponse {
@@ -24,14 +27,15 @@ interface ParsedResponse {
   code?: string;
 }
 
-const ChatArea = ({ messages, isLoading, onToggleStar }: ChatAreaProps) => {
+const ChatArea = ({ messages, isLoading, onToggleStar, onPlayMessage, currentlyPlaying }: ChatAreaProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const { isDarkMode } = useTheme();
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messages.length > 0 && messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   const formatTimestamp = (date: Date) => {
@@ -40,7 +44,6 @@ const ChatArea = ({ messages, isLoading, onToggleStar }: ChatAreaProps) => {
 
   const parseAIResponse = (content: string): ParsedResponse | null => {
     try {
-      // Try to find JSON within the content
       const jsonMatch = content.match(/```json\s*({[\s\S]*?})\s*```/) || 
                        content.match(/json\s*({[\s\S]*?})\s*/) ||
                        content.match(/```json\s*({[\s\S]*?})\s*```/);
@@ -86,10 +89,8 @@ const ChatArea = ({ messages, isLoading, onToggleStar }: ChatAreaProps) => {
     setDownloadingId(messageId);
     
     try {
-      // Dynamic import for better bundle size
       const html2canvas = (await import('html2canvas')).default;
       
-      // Create a temporary iframe to render the HTML
       const iframe = document.createElement('iframe');
       iframe.style.position = 'absolute';
       iframe.style.left = '-9999px';
@@ -97,18 +98,15 @@ const ChatArea = ({ messages, isLoading, onToggleStar }: ChatAreaProps) => {
       iframe.style.height = '800px';
       document.body.appendChild(iframe);
 
-      // Write HTML content to iframe
       iframe.contentDocument?.open();
       iframe.contentDocument?.write(htmlContent);
       iframe.contentDocument?.close();
 
-      // Wait for content to load
       await new Promise(resolve => {
         iframe.onload = resolve;
-        setTimeout(resolve, 2000); // Fallback timeout
+        setTimeout(resolve, 2000);
       });
 
-      // Capture the iframe content
       const canvas = await html2canvas(iframe.contentDocument?.body || document.body, {
         width: 1200,
         height: 800,
@@ -117,13 +115,11 @@ const ChatArea = ({ messages, isLoading, onToggleStar }: ChatAreaProps) => {
         allowTaint: false,
       });
 
-      // Create download link
       const link = document.createElement('a');
       link.download = `study-tool-${Date.now()}.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
 
-      // Cleanup
       document.body.removeChild(iframe);
       
       toast.success("Study tool downloaded as image!", { duration: 3000 });
@@ -139,11 +135,9 @@ const ChatArea = ({ messages, isLoading, onToggleStar }: ChatAreaProps) => {
     setDownloadingId(messageId);
     
     try {
-      // Dynamic imports
       const html2canvas = (await import('html2canvas')).default;
       const jsPDF = (await import('jspdf')).jsPDF;
       
-      // Create temporary iframe
       const iframe = document.createElement('iframe');
       iframe.style.position = 'absolute';
       iframe.style.left = '-9999px';
@@ -203,16 +197,28 @@ const ChatArea = ({ messages, isLoading, onToggleStar }: ChatAreaProps) => {
 
     if (parsedResponse && parsedResponse.code) {
       return (
-        <div className="w-full">
-          <div className="bg-muted text-foreground rounded-2xl rounded-tl-sm p-4 mb-3">
-            <p className="whitespace-pre-wrap">{parsedResponse.response}</p>
+        <div className="w-full space-y-4">
+          <div className={cn(
+            "rounded-2xl rounded-tl-md p-6 shadow-sm",
+            isDarkMode ? "bg-slate-700 border border-slate-600 text-slate-200" : "bg-gradient-to-r from-white to-blue-50 border border-blue-100"
+          )}>
+            <div className="flex items-start gap-3 mb-3">
+              <div className={cn("p-2 rounded-lg", isDarkMode ? "bg-slate-600" : "bg-blue-100")}>
+                <Sparkles size={16} className={isDarkMode ? "text-blue-400" : "text-blue-600"} />
+              </div>
+              <div className="flex-1">
+                <p className="leading-relaxed">{parsedResponse.response}</p>
+              </div>
+            </div>
           </div>
 
-          <Card className="mt-3">
-            <CardHeader className="pb-3">
+          <Card className={cn("border-0 shadow-lg", isDarkMode ? "bg-slate-800 text-slate-200" : "bg-gradient-to-br from-white to-slate-50")}>
+            <CardHeader className={cn("pb-4 rounded-t-lg", isDarkMode ? "bg-slate-700 border-b border-slate-600" : "bg-gradient-to-r from-indigo-50 to-purple-50")}>
               <div className="flex items-center justify-between">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Code size={16} />
+                <CardTitle className={cn("text-lg flex items-center gap-3", isDarkMode ? "text-slate-100" : "text-slate-800")}>
+                  <div className={cn("p-2 rounded-lg", isDarkMode ? "bg-slate-600" : "bg-indigo-100")}>
+                    <Code size={18} className={isDarkMode ? "text-indigo-400" : "text-indigo-600"} />
+                  </div>
                   Interactive Study Tool
                 </CardTitle>
                 
@@ -222,10 +228,11 @@ const ChatArea = ({ messages, isLoading, onToggleStar }: ChatAreaProps) => {
                       variant="outline" 
                       size="sm" 
                       disabled={downloadingId === message.id}
+                      className={cn("hover:bg-slate-50", isDarkMode && "bg-slate-600 text-slate-100 border-slate-500 hover:bg-slate-500")}
                     >
                       {downloadingId === message.id ? (
                         <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600 mr-2"></div>
                           Downloading...
                         </>
                       ) : (
@@ -236,10 +243,11 @@ const ChatArea = ({ messages, isLoading, onToggleStar }: ChatAreaProps) => {
                       )}
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent>
+                  <DropdownMenuContent className={isDarkMode ? "bg-slate-700 border-slate-600 text-slate-200" : ""}>
                     <DropdownMenuItem 
                       onClick={() => downloadAsImage(parsedResponse.code!, message.id)}
                       disabled={downloadingId === message.id}
+                      className={isDarkMode ? "hover:bg-slate-600" : ""}
                     >
                       <Image size={14} className="mr-2" />
                       Download as PNG
@@ -247,6 +255,7 @@ const ChatArea = ({ messages, isLoading, onToggleStar }: ChatAreaProps) => {
                     <DropdownMenuItem 
                       onClick={() => downloadAsPDF(parsedResponse.code!, message.id)}
                       disabled={downloadingId === message.id}
+                      className={isDarkMode ? "hover:bg-slate-600" : ""}
                     >
                       <FileText size={14} className="mr-2" />
                       Download as PDF
@@ -255,65 +264,15 @@ const ChatArea = ({ messages, isLoading, onToggleStar }: ChatAreaProps) => {
                 </DropdownMenu>
               </div>
             </CardHeader>
-            <CardContent>
-              <Tabs defaultValue="preview" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="preview" className="flex items-center gap-2">
-                    <Eye size={14} />
-                    Preview
-                  </TabsTrigger>
-                  <TabsTrigger value="code" className="flex items-center gap-2">
-                    <Code size={14} />
-                    HTML Code
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="preview" className="mt-4">
-                  <div className="border rounded-lg overflow-hidden bg-white">
-                    <iframe
-                      srcDoc={parsedResponse.code}
-                      className="w-full h-96 border-0"
-                      sandbox="allow-scripts"
-                      title="Interactive Study Tool"
-                    />
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="code" className="mt-4">
-                  <div className="relative">
-                    <SyntaxHighlighter
-                      language="html"
-                      style={oneDark}
-                      customStyle={{
-                        padding: "1rem",
-                        borderRadius: "0.5rem",
-                        fontSize: "0.875rem",
-                        maxHeight: "400px",
-                      }}
-                    >
-                      {parsedResponse.code}
-                    </SyntaxHighlighter>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="absolute top-2 right-2"
-                      onClick={() => handleCopy(parsedResponse.code!, message.id, true)}
-                    >
-                      {copiedCodeId === message.id ? (
-                        <>
-                          <Check size={14} className="mr-1" />
-                          Copied!
-                        </>
-                      ) : (
-                        <>
-                          <Copy size={14} className="mr-1" />
-                          Copy Code
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </TabsContent>
-              </Tabs>
+            <CardContent className="p-6">
+              <div className={cn("rounded-xl overflow-hidden shadow-inner", isDarkMode ? "border-2 border-slate-600 bg-slate-700" : "border-2 border-slate-200 bg-white")}>
+                <iframe
+                  srcDoc={parsedResponse.code}
+                  className="w-full h-96 border-0"
+                  sandbox="allow-scripts"
+                  title="Interactive Study Tool"
+                />
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -321,18 +280,35 @@ const ChatArea = ({ messages, isLoading, onToggleStar }: ChatAreaProps) => {
     }
 
     return (
-      <div className="bg-muted text-foreground rounded-2xl rounded-tl-sm p-4">
-        <p className="whitespace-pre-wrap">{message.content}</p>
+      <div className={cn(
+        "rounded-2xl rounded-tl-md p-6 shadow-sm",
+        isDarkMode ? "bg-slate-700 border border-slate-600 text-slate-200" : "bg-gradient-to-r from-white to-blue-50 border border-blue-100"
+      )}>
+        <div className="flex items-start gap-3">
+          <div className={cn("p-2 rounded-lg flex-shrink-0", isDarkMode ? "bg-slate-600" : "bg-blue-100")}>
+            <Sparkles size={16} className={isDarkMode ? "text-blue-400" : "text-blue-600"} />
+          </div>
+          <div className="flex-1">
+            <p className="leading-relaxed whitespace-pre-wrap">{message.content}</p>
+          </div>
+        </div>
       </div>
     );
   };
 
   return (
-    <div className="flex-grow overflow-y-auto p-6 gradient-bg">
+    <div className={cn("flex-grow overflow-y-auto p-6 transition-colors duration-200", isDarkMode ? "bg-slate-900 text-slate-200" : "bg-gradient-to-br from-slate-50 via-white to-blue-50")}>
       {messages.length === 0 ? (
-        <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
-          <h3 className="text-lg font-medium mb-2">No messages yet</h3>
-          <p className="text-sm">Start a conversation by typing a message below</p>
+        <div className="h-full flex flex-col items-center justify-center text-center">
+          <div className={cn("p-6 rounded-2xl shadow-lg border max-w-md", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200")}>
+            <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Sparkles size={24} className="text-white" />
+            </div>
+            <h3 className={cn("text-xl font-semibold mb-3", isDarkMode ? "text-slate-100" : "text-slate-800")}>Start Your Conversation</h3>
+            <p className={cn("leading-relaxed", isDarkMode ? "text-slate-300" : "text-slate-600")}>
+              Ask me anything! I can help you learn, solve problems, or create interactive study materials.
+            </p>
+          </div>
         </div>
       ) : (
         <div className="max-w-4xl mx-auto">
@@ -341,54 +317,57 @@ const ChatArea = ({ messages, isLoading, onToggleStar }: ChatAreaProps) => {
               key={message.id}
               id={`message-${message.id}`}
               className={cn(
-                "flex flex-col mb-6 transition-colors duration-200 group",
+                "flex flex-col mb-8 transition-all duration-200 group",
                 message.sender === "user" ? "items-end" : "items-start"
               )}
             >
-              <div className="flex items-start gap-3 w-full max-w-[95%]">
+              <div className="flex items-start gap-4 w-full max-w-[95%]">
                 {message.sender === "ai" && (
-                  <Avatar className="h-8 w-8 mt-1 flex-shrink-0">
+                  <Avatar className="h-10 w-10 mt-1 flex-shrink-0 shadow-md border-2 border-white">
                     <AvatarImage src="/ai-avatar.png" alt="AI" />
-                    <AvatarFallback className="bg-primary/10 text-primary">AI</AvatarFallback>
+                    <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold">
+                      AI
+                    </AvatarFallback>
                   </Avatar>
                 )}
 
                 <div className="flex flex-col w-full">
                   {message.sender === "user" ? (
-                    <div className="bg-primary/10 text-primary-foreground rounded-2xl rounded-tr-sm p-4 ml-auto">
-                      <p className="whitespace-pre-wrap">{message.content}</p>
+                    <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-2xl rounded-tr-md p-5 ml-auto shadow-lg">
+                      <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
                     </div>
                   ) : (
                     renderAIMessage(message)
                   )}
 
-                  <div className="flex items-center justify-between mt-2 px-1">
-                    <span className="text-xs text-muted-foreground">
+                  <div className="flex items-center justify-between mt-3 px-2">
+                    <span className={cn("text-xs font-medium", isDarkMode ? "text-slate-400" : "text-slate-500")}>
                       {formatTimestamp(message.timestamp)}
                     </span>
 
                     {message.sender === "ai" && (
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                      <div className="opacity-0 group-hover:opacity-100 transition-all duration-200 flex gap-1">
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-7 w-7 hover:bg-accent"
+                              className={cn("h-8 w-8 rounded-full", isDarkMode ? "hover:bg-slate-700" : "hover:bg-slate-100")}
                               onClick={() => handleStar(message.id, message.starred)}
                               aria-label={message.starred ? "Unstar message" : "Star message"}
                             >
                               <Star
                                 size={14}
                                 className={cn(
+                                  "transition-colors duration-200",
                                   message.starred
                                     ? "fill-yellow-500 text-yellow-500"
-                                    : "text-muted-foreground"
+                                    : isDarkMode ? "text-slate-500 hover:text-yellow-500" : "text-slate-400 hover:text-yellow-500"
                                 )}
                               />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>
+                          <TooltipContent className={isDarkMode ? "bg-slate-700 border-slate-600 text-slate-200" : ""}>
                             {message.starred ? "Remove from starred" : "Add to starred"}
                           </TooltipContent>
                         </Tooltip>
@@ -398,7 +377,7 @@ const ChatArea = ({ messages, isLoading, onToggleStar }: ChatAreaProps) => {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-7 w-7 hover:bg-accent"
+                              className={cn("h-8 w-8 rounded-full", isDarkMode ? "hover:bg-slate-700" : "hover:bg-slate-100")}
                               onClick={() => {
                                 const parsed = parseAIResponse(message.content);
                                 const contentToCopy = parsed ? parsed.response : message.content;
@@ -409,12 +388,28 @@ const ChatArea = ({ messages, isLoading, onToggleStar }: ChatAreaProps) => {
                               {copiedMessageId === message.id ? (
                                 <Check size={14} className="text-green-500" />
                               ) : (
-                                <Copy size={14} className="text-muted-foreground" />
+                                <Copy size={14} className={isDarkMode ? "text-slate-500 hover:text-slate-400" : "text-slate-400 hover:text-slate-600"} />
                               )}
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>
+                          <TooltipContent className={isDarkMode ? "bg-slate-700 border-slate-600 text-slate-200" : ""}>
                             {copiedMessageId === message.id ? "Copied!" : "Copy message"}
+                          </TooltipContent>
+                        </Tooltip>
+
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className={cn("h-8 w-8 rounded-full", isDarkMode ? "hover:bg-slate-700" : "hover:bg-slate-100")}
+                              onClick={() => onPlayMessage(message.id, message.content)}
+                            >
+                              {currentlyPlaying === message.id ? <Pause size={16} /> : <Play size={16} />}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent className={isDarkMode ? "bg-slate-700 border-slate-600 text-slate-200" : ""}>
+                            {currentlyPlaying === message.id ? "Pause" : "Play"}
                           </TooltipContent>
                         </Tooltip>
                       </div>
@@ -425,15 +420,20 @@ const ChatArea = ({ messages, isLoading, onToggleStar }: ChatAreaProps) => {
             </div>
           ))}
           {isLoading && (
-            <div className="flex items-start gap-3">
-              <Avatar className="h-8 w-8 mt-1">
-                <AvatarFallback className="bg-primary/10 text-primary">AI</AvatarFallback>
+            <div className="flex items-start gap-4 mb-8">
+              <Avatar className="h-10 w-10 mt-1 shadow-md border-2 border-white">
+                <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold">
+                  AI
+                </AvatarFallback>
               </Avatar>
-              <div className="bg-muted rounded-2xl rounded-tl-sm p-4">
-                <div className="flex space-x-2">
-                  <div className="h-2 w-2 bg-gray-400 rounded-full animate-bounce"></div>
-                  <div className="h-2 w-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-.3s]"></div>
-                  <div className="h-2 w-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-.5s]"></div>
+              <div className={cn("border rounded-2xl rounded-tl-md p-6 shadow-sm", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200")}>
+                <div className="flex items-center gap-3">
+                  <div className="flex space-x-2">
+                    <div className="h-2 w-2 bg-blue-400 rounded-full animate-bounce"></div>
+                    <div className="h-2 w-2 bg-blue-400 rounded-full animate-bounce [animation-delay:-.3s]"></div>
+                    <div className="h-2 w-2 bg-blue-400 rounded-full animate-bounce [animation-delay:-.5s]"></div>
+                  </div>
+                  <span className={cn("text-sm", isDarkMode ? "text-slate-400" : "text-slate-500")}>AI is thinking...</span>
                 </div>
               </div>
             </div>

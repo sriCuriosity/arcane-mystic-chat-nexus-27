@@ -1,20 +1,17 @@
 import axios from "axios";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import AppHeader from "@/components/AppHeader";
 import Sidebar from "@/components/Sidebar";
 import ChatArea from "@/components/ChatArea";
 import MessageInput from "@/components/MessageInput";
 import { Message } from "@/types/chat";
 import { toast } from "sonner";
-
+import { Button } from "@/components/ui/button";
+import { Play, Pause } from "lucide-react";
 
 const SONAR_API_URL = "https://api.perplexity.ai/chat/completions";
-const SONAR_API_TOKEN = process.env.REACT_APP_SONAR_API_TOKEN || "";
-if (!SONAR_API_TOKEN) {
-  console.error("SONAR_API_TOKEN is not defined.Please set it in your environment variables.");
-}
-const BACKEND_API_URL = "http://localhost:8081"; // Update with your backend API URL
-
+const SONAR_API_TOKEN = "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";
+const BACKEND_API_URL = "http://127.0.0.1:8000/classify-intent";
 
 interface IntentResult {
   matched_intention: string | null;
@@ -42,27 +39,49 @@ const ChatPage = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [characterData, setCharacterData] = useState<CharacterData | null>(null);
+  const [currentlyPlaying, setCurrentlyPlaying] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    const savedCharacter = sessionStorage.getItem('engagedCharacter');
+    const savedCharacter = localStorage.getItem("engagedCharacter");
     if (savedCharacter) {
       try {
         const parsedData = JSON.parse(savedCharacter);
-        setCharacterData(parsedData);
+        // Handle the array structure and get the first character
+        const characterData = Array.isArray(parsedData) && parsedData.length > 0 ? parsedData[0] : null;
+        if (characterData) {
+          setCharacterData(characterData);
+        }
       } catch (error) {
-        console.error('Error parsing character data:', error);
+        console.error("Error parsing character data:", error);
       }
     }
   }, []);
+
+  // Load messages and starred status from localStorage on component mount
+  useEffect(() => {
+    const savedMessages = localStorage.getItem("chatMessages");
+    if (savedMessages) {
+      try {
+        const parsedMessages = JSON.parse(savedMessages);
+        setMessages(parsedMessages);
+      } catch (error) {
+        console.error("Error parsing saved messages:", error);
+      }
+    }
+  }, []);
+
+  // Save messages to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem("chatMessages", JSON.stringify(messages));
+  }, [messages]);
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
   const fetchIntentClassification = async (prompt: string): Promise<IntentResult> => {
     try {
-      const response = await axios.post(`${BACKEND_API_URL}/classify-intent`, {
-        prompt,
-      });
-      console.log("Intent API response:", response.data);  // <-- Log intent API response
+      const response = await axios.post(`${BACKEND_API_URL}`, { prompt });
+      console.log("Intent API response:", response.data);
       return response.data;
     } catch (error) {
       console.error("Intent classification failed:", error);
@@ -70,10 +89,7 @@ const ChatPage = () => {
     }
   };
 
-  const fetchSonarAIResponse = async (
-    userMessage: string,
-    systemContent: string
-  ): Promise<string> => {
+  const fetchSonarAIResponse = async (userMessage: string, systemContent: string): Promise<string> => {
     const requestPayload = {
       model: "sonar",
       messages: [
@@ -82,13 +98,7 @@ const ChatPage = () => {
       ],
     };
 
-    console.log("Sending request to Sonar AI:");
-    console.log("URL:", SONAR_API_URL);
-    console.log("Headers:", {
-      Authorization: `Bearer ${SONAR_API_TOKEN}`,
-      "Content-Type": "application/json",
-    });
-    console.log("Body:", JSON.stringify(requestPayload, null, 2));
+    console.log("Sending request to Sonar AI:", requestPayload);
 
     const response = await fetch(SONAR_API_URL, {
       method: "POST",
@@ -103,11 +113,12 @@ const ChatPage = () => {
 
     const data = await response.json();
 
-    console.log("Sonar AI API response:", data); // <-- Log Sonar API response
+    console.log("Sonar AI API response:", data);
 
     return data.choices?.[0]?.message?.content || "No response from Sonar AI.";
   };
 
+  // ** KEEP YOUR ORIGINAL createOptimizedSystemPrompt UNCHANGED **
   const createOptimizedSystemPrompt = (intent: IntentResult) => {
     if (!intent.recommended_tools.length) {
       // fallback prompt if no tools recommended
@@ -142,16 +153,17 @@ Make the HTML self-contained, clean, modern, responsive, and visually appealing.
 Only return the JSON object, no extra text.`;
   };
 
+  // ** KEEP YOUR ORIGINAL createCasualSystemPrompt UNCHANGED **
   const createCasualSystemPrompt = () => {
-    if (characterData) {
+    if (characterData && characterData.name && characterData.role && characterData.systemPrompt) {
       return `
 You are ${characterData.name}, a ${characterData.role}.
 
 Core Personality:
 ${characterData.systemPrompt}
 
-Current Life Stage: "${characterData.lifeStage.stage}"
-${characterData.lifeStage.description}
+${characterData.lifeStage ? `Current Life Stage: "${characterData.lifeStage.stage}"
+${characterData.lifeStage.description}` : ''}
 
 Behavior Guidelines:
 - Stay in character and reflect both your core personality and current life stage.
@@ -164,12 +176,77 @@ Behavior Guidelines:
 
     return `You are a friendly AI companion. Respond naturally and helpfully with a conversational tone.`;
   };
+
+  const convertToSpeech = async (text: string, messageId: string) => {
+    try {
+      // If this message is already playing, stop it
+      if (currentlyPlaying === messageId) {
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current.currentTime = 0;
+        }
+        setCurrentlyPlaying(null);
+        return;
+      }
+
+      // Stop any currently playing audio
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+
+      const toastId = toast.loading('Converting to speech...');
+
+      const response = await fetch(`http://127.0.0.1:3000/speak`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.details || 'Speech conversion failed');
+      }
+
+      const audioBlob = await response.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+
+      // Create new audio element
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+
+      // Clean up the URL object after audio finishes playing
+      audio.onended = () => {
+        URL.revokeObjectURL(audioUrl);
+        setCurrentlyPlaying(null);
+      };
+
+      toast.dismiss(toastId);
+      toast.success('Playing response');
+
+      setCurrentlyPlaying(messageId);
+      await audio.play();
+    } catch (error) {
+      console.error('Error converting to speech:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to convert response to speech');
+      setCurrentlyPlaying(null);
+    }
+  };
+
   const handleSendMessage = async (content: string) => {
+    if (!content.trim()) {
+      toast.error('Please enter a message');
+      return;
+    }
+
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       content,
       sender: "user",
       timestamp: new Date(),
+      starred: false
     };
 
     setMessages((prev) => [...prev, userMessage]);
@@ -189,87 +266,81 @@ Behavior Guidelines:
         systemPrompt = createCasualSystemPrompt();
       }
 
-      const aiContent = await fetchSonarAIResponse(content, systemPrompt);
+      const aiRawContent = await fetchSonarAIResponse(content, systemPrompt);
+
+      let aiParsed: { response: string; code: string } = { response: aiRawContent, code: "" };
+      try {
+        const jsonStart = aiRawContent.indexOf("{");
+        const jsonString = jsonStart >= 0 ? aiRawContent.slice(jsonStart) : aiRawContent;
+        aiParsed = JSON.parse(jsonString);
+      } catch (err) {
+        console.warn("Failed to parse AI response as JSON, using raw content.", err);
+        aiParsed = { response: aiRawContent, code: "" };
+      }
 
       const aiMessage: Message = {
         id: `ai-${Date.now()}`,
-        content: aiContent,
+        content:
+          aiParsed.response +
+          (aiParsed.code ? `\n\n### Render Code Below ###\n${aiParsed.code}` : ""),
         sender: "ai",
         timestamp: new Date(),
-        starred: false,
+        starred: false
       };
 
       setMessages((prev) => [...prev, aiMessage]);
 
       if (shouldShowIntentToast) {
         toast.success(
-          `🎯 Detected: ${intent.matched_intention} (${Math.round(intent.confidence * 100)}% confidence)`,
-          { duration: 3000 }
+          `🎯 Detected: ${intent.matched_intention} (${Math.round(intent.confidence * 100)}% confidence)`
         );
       }
-
     } catch (error) {
-      console.error("Error handling message:", error);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `ai-${Date.now()}`,
-          content: "Sorry, I couldn't process your request right now.",
-          sender: "ai",
-          timestamp: new Date(),
-          starred: false,
-        },
-      ]);
-      toast.error("Failed to process your message. Please try again.");
+      console.error("Error processing message:", error);
+      toast.error("Failed to get a response from the AI");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const toggleStarMessage = (messageId: string) => {
-    setMessages((prev) =>
-      prev.map((msg) =>
-        msg.id === messageId
-          ? { ...msg, starred: !msg.starred }
-          : msg
-      )
-    );
-
-    const message = messages.find((msg) => msg.id === messageId);
-    if (message) {
-      toast[!message.starred ? "success" : "info"](
-        !message.starred
-          ? "Message starred and saved to your collection"
-          : "Message removed from starred collection"
-      );
-    }
-  };
-
-  const starredMessages = messages.filter((msg) => msg.starred);
-
   return (
-    <div className="h-screen flex flex-col overflow-hidden">
-      <AppHeader />
-      <div className="flex flex-grow overflow-hidden">
-        <Sidebar
+    <div className="flex h-screen flex-col">
+      <AppHeader onToggleSidebar={toggleSidebar} sidebarOpen={sidebarOpen} />
+      <div className="flex flex-1 overflow-hidden">
+        <Sidebar 
           isOpen={sidebarOpen}
           toggleSidebar={toggleSidebar}
-          starredMessages={starredMessages}
+          starredMessages={messages.filter(msg => msg.starred)}
           messages={messages}
-          onToggleStar={toggleStarMessage}
+          onToggleStar={(messageId) => {
+            setMessages(prev =>
+              prev.map(msg =>
+                msg.id === messageId ? { ...msg, starred: !msg.starred } : msg
+              )
+            );
+          }}
           onMessageClick={(messageId) => {
             console.log("Message clicked:", messageId);
           }}
         />
-
-        <div className="flex-grow flex flex-col">
-          <ChatArea
-            messages={messages}
+        <main className="flex flex-col flex-grow overflow-y-auto">
+          <ChatArea 
+            messages={messages} 
             isLoading={isLoading}
-            onToggleStar={toggleStarMessage}
+            onToggleStar={(messageId) => {
+              setMessages(prev =>
+                prev.map(msg =>
+                  msg.id === messageId ? { ...msg, starred: !msg.starred } : msg
+                )
+              );
+            }}
+            onPlayMessage={(messageId, content) => convertToSpeech(content, messageId)}
+            currentlyPlaying={currentlyPlaying}
           />
-          <MessageInput onSendMessage={handleSendMessage} />
-        </div>
+          <div className="flex flex-col min-w-0">
+            <MessageInput onSendMessage={handleSendMessage} disabled={isLoading} />
+          </div>
+        </main>
       </div>
     </div>
   );

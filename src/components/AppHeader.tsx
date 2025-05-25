@@ -1,69 +1,121 @@
 import { useState } from "react";
-import { User } from "lucide-react"; // for user icon
-import { useNavigate } from 'react-router-dom';
-import { Moon, Sun, Send, ChevronLeft, ChevronDown } from "./Icons"; // your icons
+import { useNavigate } from "react-router-dom";
+import { User, Settings, MessageSquare, History, BookOpen } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { useTheme } from "@/contexts/ThemeContext";
+import { Moon, Sun } from "@/components/Icons";
+import LibraryModal from './LibraryModal';
 
-const AppHeader = () => {
+interface AppHeaderProps {
+  onToggleSidebar: () => void;
+  sidebarOpen: boolean;
+}
 
-  const navigate = useNavigate();
-
+const AppHeader = ({ onToggleSidebar, sidebarOpen }: AppHeaderProps) => {
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [libraryOpen, setLibraryOpen] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
+  const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const navigate = useNavigate();
+  const { isDarkMode, toggleTheme } = useTheme();
 
   const toggleHistory = () => {
-    if (libraryOpen) setLibraryOpen(false);
+    if (isLibraryOpen) setIsLibraryOpen(false);
     setHistoryOpen(!historyOpen);
   };
 
   const toggleLibrary = () => {
     if (historyOpen) setHistoryOpen(false);
-    setLibraryOpen(!libraryOpen);
+    setIsLibraryOpen(!isLibraryOpen);
   };
-
-  const toggleDarkMode = () => setDarkMode(!darkMode);
 
   return (
     <>
-      <header className="flex justify-between items-center px-6 py-4 border-b border-border bg-background">
-        {/* Left */}
+      <header className="flex justify-between items-center px-6 py-4 border-b border-border/40 bg-background/80 backdrop-blur-md shadow-sm transition-colors duration-200">
+        {/* Left - Brand */}
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 cursor-pointer">
-            <div className="bg-arcane p-2 rounded-md flex items-center justify-center text-white">
-              <User size={20} />
+          <div className="flex items-center gap-3">
+            <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-2.5 rounded-xl flex items-center justify-center text-white shadow-lg">
+              <MessageSquare size={20} />
+            </div>
+            <div className="hidden sm:block">
+              <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                ChatAI
+              </h1>
+              <p className="text-xs text-muted-foreground">Intelligent Assistant</p>
             </div>
           </div>
         </div>
 
-        {/* Center */}
-        <div className="flex justify-center gap-4 flex-1 max-w-xs">
-          <div
-            className={`flex items-center gap-1 cursor-pointer px-3 py-2 rounded ${
-              historyOpen ? "bg-muted" : ""
-            }`}
+        {/* Center - Navigation */}
+        <div className="flex items-center gap-2">
+          <Button
+            variant={historyOpen ? "secondary" : "ghost"}
+            size="sm"
             onClick={toggleHistory}
+            className="flex items-center gap-2 px-4"
           >
-            History <ChevronDown />
-          </div>
+            <History size={16} />
+            <span className="hidden sm:inline">History</span>
+            <Badge variant="secondary" className="ml-1 text-xs">5</Badge>
+          </Button>
 
-          <div
-            className={`flex items-center gap-1 cursor-pointer px-3 py-2 rounded ${
-              libraryOpen ? "bg-muted" : ""
-            }`}
+          <Button
+            variant={isLibraryOpen ? "secondary" : "ghost"}
+            size="sm"
             onClick={toggleLibrary}
+            className="flex items-center gap-2 px-4"
           >
-            Library <ChevronDown />
-          </div>
+            <BookOpen size={16} />
+            <span className="hidden sm:inline">Library</span>
+          </Button>
         </div>
 
-        {/* Right */}
-        <div className="flex items-center gap-4">
-          <button className="action-button" aria-label="Help">
-            <Send />
-          </button>
-          <div 
-            className="character-logo bg-arcane rounded-full w-8 h-8 flex items-center justify-center text-white cursor-pointer select-none"
-            onClick={() => navigate('/CharacterShowcase')}
+        {/* Right - User Actions */}
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleTheme}
+            className="h-9 w-9"
+          >
+            {isDarkMode ? (
+              <Sun className="h-5 w-5 text-yellow-500" />
+            ) : (
+              <Moon className="h-5 w-5 text-slate-700" />
+            )}
+          </Button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <Settings size={18} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem>
+                <User size={16} className="mr-2" />
+                Profile Settings
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <MessageSquare size={16} className="mr-2" />
+                Chat Preferences
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                Export Conversations
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <div className="bg-gradient-to-r from-emerald-500 to-blue-500 rounded-full w-9 h-9 flex items-center justify-center text-white cursor-pointer shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105" 
+          onClick={() => navigate("/CharacterShowcase")}
           >
             🤖
           </div>
@@ -72,43 +124,37 @@ const AppHeader = () => {
 
       {/* History Panel */}
       {historyOpen && (
-        <div className="p-4 border-t border-border bg-background bg-opacity-90 backdrop-blur-sm">
-          <div className="font-semibold mb-2">History</div>
-          <div className="space-y-3">
-            {[
-              "How can I optimize my React application?",
-              "What are the best practices for CSS Grid?",
-              "Tell me about React hooks",
-              "How to implement dark mode in React?",
-              "What is the difference between useState and useReducer?",
-            ].map((query, i) => (
-              <div key={i} className="flex flex-col text-left space-y-1">
-                <span className="text-xs opacity-70">{`${(i + 1) * 3}m ago`}</span>
-                <span className="text-sm">{query}</span>
-              </div>
-            ))}
+        <div className="border-b border-border/40 bg-background/95 backdrop-blur-sm animate-in slide-in-from-top-2 duration-200">
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-lg">Recent Conversations</h3>
+              <Button variant="outline" size="sm">View All</Button>
+            </div>
+            <div className="grid gap-3">
+              {[
+                "How can I optimize my React application?",
+                "What are the best practices for CSS Grid?",
+                "Tell me about React hooks",
+                "How to implement dark mode in React?",
+                "What is the difference between useState and useReducer?",
+              ].map((query, i) => (
+                <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors cursor-pointer group">
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium">{query}</span>
+                    <span className="text-xs text-muted-foreground">{`${(i + 1) * 3} minutes ago`}</span>
+                  </div>
+                  <MessageSquare size={16} className="text-muted-foreground group-hover:text-foreground transition-colors" />
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
 
-      {/* Library Panel */}
-      {libraryOpen && (
-        <div className="p-4 border-t border-border bg-background">
-          <div className="font-semibold mb-2">Image Library</div>
-          <div className="grid grid-cols-4 gap-2">
-            {Array(8)
-              .fill(0)
-              .map((_, i) => (
-                <div
-                  key={i}
-                  className="flex items-center justify-center h-16 bg-muted rounded-md text-sm text-muted-foreground"
-                >
-                  Image {i + 1}
-                </div>
-              ))}
-          </div>
-        </div>
-      )}
+      <LibraryModal 
+        isOpen={isLibraryOpen} 
+        onClose={() => setIsLibraryOpen(false)} 
+      />
     </>
   );
 };

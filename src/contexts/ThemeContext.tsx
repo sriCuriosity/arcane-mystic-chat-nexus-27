@@ -1,27 +1,28 @@
+import { createContext, useContext, useState, ReactNode, useEffect } from "react";
 
-import { createContext, useState, useContext, ReactNode, useEffect } from "react";
-
-type ThemeContextType = {
+interface ThemeContextType {
   isDarkMode: boolean;
   toggleTheme: () => void;
-};
+}
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
-  // Initialize theme from localStorage or use system preference, defaulting to dark
-  const [isDarkMode, setIsDarkMode] = useState(
-    localStorage.getItem("theme") === "light" ? false : true
-  );
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('theme');
+      return saved === 'dark';
+    }
+    return false;
+  });
 
-  // Update theme class and localStorage when isDarkMode changes
   useEffect(() => {
     if (isDarkMode) {
-      document.documentElement.classList.remove("light");
-      localStorage.setItem("theme", "dark");
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
     } else {
-      document.documentElement.classList.add("light");
-      localStorage.setItem("theme", "light");
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
     }
   }, [isDarkMode]);
 

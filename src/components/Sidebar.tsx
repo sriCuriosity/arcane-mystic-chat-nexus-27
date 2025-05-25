@@ -1,10 +1,30 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { FilterTag, Message } from "@/types/chat";
-import { X, Plus, ChevronLeft, ChevronRight, Search, ChevronDown } from "lucide-react";
+import { 
+  X, 
+  Plus, 
+  ChevronLeft, 
+  ChevronRight, 
+  Search, 
+  Filter, 
+  Sparkles, 
+  Star,
+  MessageSquare,
+  Settings,
+  Brain,
+  Palette,
+  Code2,
+  Lightbulb,
+  Menu
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import SearchModal from "./SearchModal";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { useTheme } from "@/contexts/ThemeContext";
+import { Input } from "@/components/ui/input";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -23,19 +43,20 @@ const Sidebar = ({
   onToggleStar,
   onMessageClick
 }: SidebarProps) => {
-  // Initialize filters from localStorage or use defaults
   const [filterTags, setFilterTags] = useState<FilterTag[]>(() => {
     try {
       const saved = localStorage.getItem("filters");
       const savedFilters: FilterTag[] = saved ? JSON.parse(saved) : [];
       return savedFilters.length > 0 ? savedFilters : [
-        { id: "1", label: "Category/Type", type: "category" },
-        { id: "2", label: "Visual/Design", type: "visual" },
+        { id: "1", label: "Learning", type: "category" },
+        { id: "2", label: "Creative", type: "visual" },
+        { id: "3", label: "Code Help", type: "category" },
       ];
     } catch (error) {
       return [
-        { id: "1", label: "Category/Type", type: "category" },
-        { id: "2", label: "Visual/Design", type: "visual" },
+        { id: "1", label: "Learning", type: "category" },
+        { id: "2", label: "Creative", type: "visual" },
+        { id: "3", label: "Code Help", type: "category" },
       ];
     }
   });
@@ -44,18 +65,30 @@ const Sidebar = ({
   const [isAddingFilter, setIsAddingFilter] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   
-  // Initialize selected model from localStorage or use default
   const [selectedModel, setSelectedModel] = useState(() => {
     try {
-      return localStorage.getItem("selectedModel") || "GPT-4";
+      return localStorage.getItem("selectedModel") || "GPT-4 Turbo";
     } catch (error) {
-      return "GPT-4";
+      return "GPT-4 Turbo";
     }
   });
-  
-  const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
 
-  const models = ["GPT-4", "Claude-3", "Gemini Pro", "LLaMA 2", "PaLM 2"];
+  const models = [
+    { name: "GPT-4 Turbo", icon: Brain, color: "text-emerald-600" },
+    { name: "Claude-3 Sonnet", icon: Sparkles, color: "text-purple-600" },
+    { name: "Gemini Pro", icon: Star, color: "text-blue-600" },
+    { name: "LLaMA 2", icon: Code2, color: "text-orange-600" }
+  ];
+
+  const { isDarkMode } = useTheme();
+
+  const getFilterIcon = (type: string) => {
+    switch (type) {
+      case 'visual': return Palette;
+      case 'category': return Brain;
+      default: return Lightbulb;
+    }
+  };
 
   const addFilter = () => {
     if (newFilterValue.trim()) {
@@ -67,7 +100,6 @@ const Sidebar = ({
       const updatedFilters = [...filterTags, newFilter];
       setFilterTags(updatedFilters);
       
-      // Save to localStorage
       try {
         localStorage.setItem("filters", JSON.stringify(updatedFilters));
       } catch (error) {
@@ -83,7 +115,6 @@ const Sidebar = ({
     const updatedFilters = filterTags.filter((tag) => tag.id !== id);
     setFilterTags(updatedFilters);
     
-    // Update localStorage
     try {
       localStorage.setItem("filters", JSON.stringify(updatedFilters));
     } catch (error) {
@@ -91,241 +122,226 @@ const Sidebar = ({
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      addFilter();
-    } else if (e.key === "Escape") {
-      setIsAddingFilter(false);
-      setNewFilterValue("");
-    }
-  };
-
   const selectModel = (model: string) => {
     setSelectedModel(model);
-    
-    // Save to localStorage
     try {
       localStorage.setItem("selectedModel", model);
     } catch (error) {
       console.error("Failed to save selected model to localStorage:", error);
     }
-    
-    setIsModelDropdownOpen(false);
   };
 
+  const currentModel = models.find(m => m.name === selectedModel) || models[0];
+
   return (
-    <div
-      className={cn(
-        "flex h-[calc(100vh-4rem)] bg-sidebar relative transition-all duration-300",
-        isOpen ? "w-60" : "w-16"
-      )}
-    >
-      <div className="flex flex-col flex-grow">
-        {/* Search Button */}
-        <div className="p-4 pb-0">
+    <>
+      {/* Sidebar */}
+      <div
+        className={cn(
+          "relative transition-all duration-300 ease-in-out flex flex-col h-full",
+          isDarkMode ? "bg-slate-900 border-r border-slate-700 text-slate-200" : "bg-white border-r border-slate-200",
+          isOpen ? "w-80" : "w-16"
+        )}
+      >
+        {/* Header */}
+        <div className={cn("p-3 border-b", isDarkMode ? "border-slate-700" : "border-slate-100", !isOpen && "px-2")}>
+          <div className="flex items-center justify-between">
+            {isOpen ? (
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl text-white flex items-center justify-center">
+                  <MessageSquare size={18} />
+                </div>
+                <div>
+                  <h1 className={cn("font-bold text-lg", isDarkMode ? "text-slate-100" : "text-slate-800")}>ChatAI</h1>
+                  <p className={cn("text-xs", isDarkMode ? "text-slate-400" : "text-slate-500")}>AI Assistant</p>
+                </div>
+              </div>
+            ) : (
+              <div className="w-full flex justify-center">
+                <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl text-white flex items-center justify-center">
+                  <MessageSquare size={18} />
+                </div>
+              </div>
+            )}
+            
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn("h-8 w-8", isDarkMode && "hover:bg-slate-800")}
+              onClick={toggleSidebar}
+            >
+              {isOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+            </Button>
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div className={cn("p-3 space-y-2", !isOpen && "px-2")}>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
-                variant="ghost"
-                size="icon"
-                className="w-full justify-start"
+                variant="outline"
+                size={isOpen ? "default" : "icon"}
+                className={cn(
+                  "w-full border-slate-200",
+                  isDarkMode ? "bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-200" : "bg-slate-50 hover:bg-slate-100",
+                  isOpen ? "justify-start gap-3" : "justify-center"
+                )}
                 onClick={() => setIsSearchModalOpen(true)}
               >
-                <Search className="h-5 w-5" />
-                {isOpen && <span className="ml-2">Search Messages</span>}
+                <Search size={16} />
+                {isOpen && <span>Search Messages</span>}
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="right">
-              Search and view starred messages
-            </TooltipContent>
+            {!isOpen && <TooltipContent side="right" className={isDarkMode ? "bg-slate-700 border-slate-600 text-slate-200" : ""}>Search Messages</TooltipContent>}
           </Tooltip>
         </div>
 
-        {/* TOP SECTION - Filters */}
-        <div className="flex-1 flex flex-col p-4 pt-6 min-h-0">
-          <div className="flex items-center justify-between mb-3">
-            {isOpen && <span className="text-sm font-medium">Filters</span>}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsAddingFilter(true)}
-              className={cn(
-                "text-xs h-7",
-                !isOpen && "w-full px-2"
-              )}
-            >
-              <Plus size={12} className={isOpen ? "mr-1" : ""} />
-              {isOpen && "Add"}
-            </Button>
+        <div className={cn("px-3", !isOpen && "px-2")}>
+          <Separator className={isDarkMode ? "bg-slate-700" : ""} />
+        </div>
+
+        {/* AI Model Selector */}
+        <div className={cn("p-3", !isOpen && "px-2")}>
+          {isOpen && (
+            <div className="flex items-center gap-2 mb-3">
+              <currentModel.icon size={14} className={currentModel.color} />
+              <span className={cn("text-sm font-semibold", isDarkMode ? "text-slate-100" : "text-slate-700")}>AI Model</span>
+            </div>
+          )}
+          
+          <div className="space-y-1">
+            {models.map((model) => (
+              <Tooltip key={model.name}>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={selectedModel === model.name ? "default" : "ghost"}
+                    size={isOpen ? "sm" : "icon"}
+                    className={cn(
+                      "w-full transition-colors h-8",
+                      isOpen ? "justify-start gap-3" : "justify-center",
+                      selectedModel === model.name 
+                        ? (isDarkMode ? "bg-blue-700 text-white border-blue-600 hover:bg-blue-600" : "bg-blue-50 text-blue-700 border-blue-200")
+                        : (isDarkMode ? "hover:bg-slate-800 text-slate-200" : "")
+                    )}
+                    onClick={() => selectModel(model.name)}
+                  >
+                    <div className="flex items-center justify-center">
+                      <model.icon size={14} className={model.color} />
+                    </div>
+                    {isOpen && <span className="truncate text-xs">{model.name}</span>}
+                  </Button>
+                </TooltipTrigger>
+                {!isOpen && <TooltipContent side="right" className={isDarkMode ? "bg-slate-700 border-slate-600 text-slate-200" : ""}>{model.name}</TooltipContent>}
+              </Tooltip>
+            ))}
+          </div>
+        </div>
+
+        <div className={cn("px-3", !isOpen && "px-2")}>
+          <Separator className={isDarkMode ? "bg-slate-700" : ""} />
+        </div>
+
+        {/* Filters Section */}
+        <div className={cn("flex-1 p-3 min-h-0 flex flex-col overflow-y-auto", !isOpen && "px-2")}>
+          <div className={cn("flex items-center justify-between mb-3", !isOpen && "justify-center")}>
+            {isOpen ? (
+              <span className={cn("text-sm font-semibold", isDarkMode ? "text-slate-100" : "text-slate-700")}>Smart Filters</span>
+            ) : (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Filter size={16} className={isDarkMode ? "text-slate-400" : "text-slate-700"} />
+                </TooltipTrigger>
+                <TooltipContent side="right" className={isDarkMode ? "bg-slate-700 border-slate-600 text-slate-200" : ""}>Smart Filters</TooltipContent>
+              </Tooltip>
+            )}
+            {isOpen && (
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className={cn("text-xs h-4", isDarkMode && "bg-slate-700 text-slate-300")}>
+                  {filterTags.length}
+                </Badge>
+                <Button variant="ghost" size="icon" className={cn("h-6 w-6", isDarkMode && "hover:bg-slate-800")}
+                  onClick={() => setIsAddingFilter(true)}>
+                  <Plus size={14} />
+                </Button>
+              </div>
+            )}
           </div>
 
-          {/* Add Filter Input */}
-          {isAddingFilter && (
-            <div className="mb-3">
-              <input
+          {isOpen && isAddingFilter && (
+            <div className="flex items-center gap-2 mb-3">
+              <Input
                 type="text"
                 value={newFilterValue}
                 onChange={(e) => setNewFilterValue(e.target.value)}
-                onKeyDown={handleKeyDown}
-                onBlur={() => {
-                  if (!newFilterValue.trim()) {
-                    setIsAddingFilter(false);
+                placeholder="Add new filter..."
+                className={cn("h-8 text-sm", isDarkMode && "bg-slate-800 border-slate-600 text-slate-200 placeholder:text-slate-400")}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    addFilter();
                   }
                 }}
-                placeholder="Add new filter..."
-                className="w-full px-2 py-1 text-sm bg-sidebar-accent rounded-md focus:outline-none focus:ring-1 focus:ring-sidebar-ring"
-                autoFocus
               />
-              <div className="flex gap-1 mt-2">
-                <Button
-                  size="sm"
-                  onClick={addFilter}
-                  className="text-xs h-6 px-2"
-                >
-                  Add
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setIsAddingFilter(false);
-                    setNewFilterValue("");
-                  }}
-                  className="text-xs h-6 px-2"
-                >
-                  Cancel
-                </Button>
-              </div>
+              <Button variant="secondary" size="sm" onClick={addFilter} className={isDarkMode && "bg-slate-700 hover:bg-slate-600 border-slate-600 text-slate-200"}>Add</Button>
+              <Button variant="ghost" size="icon" className={cn("h-8 w-8", isDarkMode && "hover:bg-slate-800")}
+                onClick={() => setIsAddingFilter(false)}>
+                <X size={14} />
+              </Button>
             </div>
           )}
 
-          {/* Scrollable Filter List */}
-          <div className="flex-1 overflow-y-auto pr-2 space-y-2 custom-scrollbar">
-            {filterTags.map((tag) => (
-              <div
-                key={tag.id}
-                className={cn(
-                  "flex items-center justify-between bg-sidebar-accent rounded-full px-3 py-1.5 text-sm border transition-all duration-200 hover:bg-sidebar-border hover:-translate-y-0.5",
-                  !isOpen && "justify-center px-2"
-                )}
-              >
-                {isOpen && <span className="truncate">{tag.label}</span>}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-4 w-4 ml-1 hover:bg-destructive hover:text-destructive-foreground rounded-full"
-                  onClick={() => removeFilter(tag.id)}
-                >
-                  <X size={10} />
-                </Button>
-              </div>
-            ))}
-            
-            {filterTags.length === 0 && isOpen && (
-              <div className="text-center text-muted-foreground py-8">
-                <div className="text-2xl mb-2 opacity-50">🏷️</div>
-                <p className="text-xs">No filters added yet</p>
-              </div>
-            )}
-          </div>
+          {isOpen && (
+            <div className="space-y-1">
+              {filterTags.map((tag) => (
+                <div key={tag.id} className={cn("flex items-center justify-between p-2 rounded-md text-sm", isDarkMode ? "bg-slate-800 text-slate-200 border border-slate-700" : "bg-slate-100 text-slate-800 border border-slate-200")}>
+                  <div className="flex items-center gap-2">
+                    {getFilterIcon(tag.type) && <span className={isDarkMode ? "text-slate-400" : "text-slate-600"}>{React.createElement(getFilterIcon(tag.type), { size: 14 })}</span>}
+                    <span>{tag.label}</span>
+                  </div>
+                  <Button variant="ghost" size="icon" className={cn("h-6 w-6", isDarkMode && "hover:bg-slate-700")}
+                    onClick={() => removeFilter(tag.id)}>
+                    <X size={12} />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* BOTTOM SECTION - Model Selector */}
-        <div className="p-4 border-t bg-background/50">
-          {isOpen && (
-            <label className="text-xs font-medium text-muted-foreground mb-2 block">
-              Model Selection
-            </label>
-          )}
-          <div className="relative">
-            <Button
-              variant="outline"
-              className={cn(
-                "w-full justify-between text-sm h-9",
-                !isOpen && "px-2"
-              )}
-              onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
-            >
-              <span className={cn("truncate", !isOpen && "sr-only")}>
-                {isOpen ? selectedModel : selectedModel.charAt(0)}
-              </span>
-              <ChevronDown 
-                size={14} 
-                className={cn(
-                  "transition-transform duration-200",
-                  isModelDropdownOpen && "rotate-180"
-                )} 
-              />
-            </Button>
-            
-            {isModelDropdownOpen && (
-              <div className="absolute bottom-full left-0 right-0 mb-1 bg-popover border rounded-md shadow-lg z-10">
-                {models.map((model) => (
-                  <button
-                    key={model}
-                    className={cn(
-                      "w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors",
-                      "first:rounded-t-md last:rounded-b-md",
-                      selectedModel === model && "bg-accent font-medium"
-                    )}
-                    onClick={() => selectModel(model)}
-                  >
-                    {model}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          
-          {isOpen && (
-            <p className="text-xs text-muted-foreground mt-1">
-              Selected: {selectedModel}
-            </p>
-          )}
+        <div className={cn("px-3 mt-auto", !isOpen && "px-2")}>
+           <Separator className={isDarkMode ? "bg-slate-700" : ""} />
+        </div>
+
+        {/* Settings */}
+        <div className={cn("p-3", !isOpen && "px-2")}>
+           {isOpen && (
+            <span className={cn("text-sm font-semibold mb-3 block", isDarkMode ? "text-slate-100" : "text-slate-700")}>Settings</span>
+           )}
+           <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size={isOpen ? "default" : "icon"}
+                 className={cn("w-full h-8", isOpen ? "justify-start gap-3" : "justify-center", isDarkMode && "hover:bg-slate-800 text-slate-200")}
+              >
+                <Settings size={16} />
+                 {isOpen && <span>Settings</span>}
+              </Button>
+            </TooltipTrigger>
+            {!isOpen && <TooltipContent side="right" className={isDarkMode ? "bg-slate-700 border-slate-600 text-slate-200" : ""}>Settings</TooltipContent>}
+           </Tooltip>
         </div>
       </div>
 
-      {/* Toggle Sidebar Button */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="absolute -right-3 top-4 bg-background border rounded-full h-6 w-6"
-        onClick={toggleSidebar}
-      >
-        {isOpen ? (
-          <ChevronLeft size={14} />
-        ) : (
-          <ChevronRight size={14} />
-        )}
-      </Button>
-
-      {/* Search Modal */}
-      <SearchModal
-        isOpen={isSearchModalOpen}
-        onClose={() => setIsSearchModalOpen(false)}
+      <SearchModal 
+        isOpen={isSearchModalOpen} 
+        onClose={() => setIsSearchModalOpen(false)} 
         messages={messages}
         starredMessages={starredMessages}
         onToggleStar={onToggleStar}
         onMessageClick={onMessageClick}
       />
-
-      {/* Custom Scrollbar Styles */}
-      <style>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 4px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: hsl(var(--border));
-          border-radius: 2px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: hsl(var(--border)) / 0.8;
-        }
-      `}</style>
-    </div>
+    </>
   );
 };
 
