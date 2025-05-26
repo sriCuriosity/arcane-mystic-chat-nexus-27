@@ -23,7 +23,11 @@ const ChatPage = () => {
 
   return (
     <div className="flex h-screen flex-col">
-      <AppHeader onToggleSidebar={toggleSidebar} sidebarOpen={sidebarOpen} />
+      <AppHeader 
+        onToggleSidebar={toggleSidebar} 
+        sidebarOpen={sidebarOpen} 
+        messages={messages}
+      />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar 
           isOpen={sidebarOpen}

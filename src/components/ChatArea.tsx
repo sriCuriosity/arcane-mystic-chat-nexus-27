@@ -316,150 +316,152 @@ const ChatArea = ({ messages, isLoading, onToggleStar, onPlayMessage, currentlyP
   };
 
   return (
-    <div className={cn("flex-grow overflow-y-auto p-6 transition-colors duration-200", isDarkMode ? "bg-slate-900 text-slate-200" : "bg-gradient-to-br from-slate-50 via-white to-blue-50")}>
-      {messages.length === 0 ? (
-        <div className="h-full flex flex-col items-center justify-center text-center">
-          <div className={cn("p-6 rounded-2xl shadow-lg border max-w-md", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200")}>
-            <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Sparkles size={24} className="text-white" />
+    <div className={cn("flex-1 flex flex-col h-full overflow-hidden", isDarkMode ? "bg-slate-900 text-slate-200" : "bg-gradient-to-br from-slate-50 via-white to-blue-50")}>
+      <div className="flex-1 overflow-y-auto p-6">
+        {messages.length === 0 ? (
+          <div className="h-full flex flex-col items-center justify-center text-center">
+            <div className={cn("p-6 rounded-2xl shadow-lg border max-w-md", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200")}>
+              <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Sparkles size={24} className="text-white" />
+              </div>
+              <h3 className={cn("text-xl font-semibold mb-3", isDarkMode ? "text-slate-100" : "text-slate-800")}>Start Your Conversation</h3>
+              <p className={cn("leading-relaxed", isDarkMode ? "text-slate-300" : "text-slate-600")}>
+                Ask me anything! I can help you learn, solve problems, or create interactive study materials.
+              </p>
             </div>
-            <h3 className={cn("text-xl font-semibold mb-3", isDarkMode ? "text-slate-100" : "text-slate-800")}>Start Your Conversation</h3>
-            <p className={cn("leading-relaxed", isDarkMode ? "text-slate-300" : "text-slate-600")}>
-              Ask me anything! I can help you learn, solve problems, or create interactive study materials.
-            </p>
           </div>
-        </div>
-      ) : (
-        <div className="max-w-4xl mx-auto">
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              id={`message-${message.id}`}
-              className={cn(
-                "flex flex-col mb-8 transition-all duration-200 group",
-                message.sender === "user" ? "items-end" : "items-start"
-              )}
-            >
-              <div className="flex items-start gap-4 w-full max-w-[95%]">
-                {message.sender === "ai" && (
-                  <Avatar className="h-10 w-10 mt-1 flex-shrink-0 shadow-md border-2 border-white">
-                    <AvatarImage src="/ai-avatar.png" alt="AI" />
-                    <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold">
-                      AI
-                    </AvatarFallback>
-                  </Avatar>
+        ) : (
+          <div className="max-w-4xl mx-auto">
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                id={`message-${message.id}`}
+                className={cn(
+                  "flex flex-col mb-8 transition-all duration-200 group",
+                  message.sender === "user" ? "items-end" : "items-start"
                 )}
-
-                <div className="flex flex-col w-full">
-                  {message.sender === "user" ? (
-                    <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-2xl rounded-tr-md p-5 ml-auto shadow-lg">
-                      <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
-                    </div>
-                  ) : (
-                    renderAIMessage(message)
+              >
+                <div className="flex items-start gap-4 w-full max-w-[95%]">
+                  {message.sender === "ai" && (
+                    <Avatar className="h-10 w-10 mt-1 flex-shrink-0 shadow-md border-2 border-white">
+                      <AvatarImage src="/ai-avatar.png" alt="AI" />
+                      <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold">
+                        AI
+                      </AvatarFallback>
+                    </Avatar>
                   )}
 
-                  <div className="flex items-center justify-between mt-3 px-2">
-                    <span className={cn("text-xs font-medium", isDarkMode ? "text-slate-400" : "text-slate-500")}>
-                      {formatTimestamp(message.timestamp)}
-                    </span>
-
-                    {message.sender === "ai" && (
-                      <div className="opacity-0 group-hover:opacity-100 transition-all duration-200 flex gap-1">
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className={cn("h-8 w-8 rounded-full", isDarkMode ? "hover:bg-slate-700" : "hover:bg-slate-100")}
-                              onClick={() => handleStar(message.id, message.starred)}
-                              aria-label={message.starred ? "Unstar message" : "Star message"}
-                            >
-                              <Star
-                                size={14}
-                                className={cn(
-                                  "transition-colors duration-200",
-                                  message.starred
-                                    ? "fill-yellow-500 text-yellow-500"
-                                    : isDarkMode ? "text-slate-500 hover:text-yellow-500" : "text-slate-400 hover:text-yellow-500"
-                                )}
-                              />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent className={isDarkMode ? "bg-slate-700 border-slate-600 text-slate-200" : ""}>
-                            {message.starred ? "Remove from starred" : "Add to starred"}
-                          </TooltipContent>
-                        </Tooltip>
-
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className={cn("h-8 w-8 rounded-full", isDarkMode ? "hover:bg-slate-700" : "hover:bg-slate-100")}
-                              onClick={() => {
-                                const parsed = parseAIResponse(message.content);
-                                const contentToCopy = parsed ? parsed.response : message.content;
-                                handleCopy(contentToCopy, message.id);
-                              }}
-                              aria-label="Copy message"
-                            >
-                              {copiedMessageId === message.id ? (
-                                <Check size={14} className="text-green-500" />
-                              ) : (
-                                <Copy size={14} className={isDarkMode ? "text-slate-500 hover:text-slate-400" : "text-slate-400 hover:text-slate-600"} />
-                              )}
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent className={isDarkMode ? "bg-slate-700 border-slate-600 text-slate-200" : ""}>
-                            {copiedMessageId === message.id ? "Copied!" : "Copy message"}
-                          </TooltipContent>
-                        </Tooltip>
-
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className={cn("h-8 w-8 rounded-full", isDarkMode ? "hover:bg-slate-700" : "hover:bg-slate-100")}
-                              onClick={() => onPlayMessage(message.id, message.content)}
-                            >
-                              {currentlyPlaying === message.id ? <Pause size={16} /> : <Play size={16} />}
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent className={isDarkMode ? "bg-slate-700 border-slate-600 text-slate-200" : ""}>
-                            {currentlyPlaying === message.id ? "Pause" : "Play"}
-                          </TooltipContent>
-                        </Tooltip>
+                  <div className="flex flex-col w-full">
+                    {message.sender === "user" ? (
+                      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-2xl rounded-tr-md p-5 ml-auto shadow-lg">
+                        <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
                       </div>
+                    ) : (
+                      renderAIMessage(message)
                     )}
+
+                    <div className="flex items-center justify-between mt-3 px-2">
+                      <span className={cn("text-xs font-medium", isDarkMode ? "text-slate-400" : "text-slate-500")}>
+                        {formatTimestamp(message.timestamp)}
+                      </span>
+
+                      {message.sender === "ai" && (
+                        <div className="opacity-0 group-hover:opacity-100 transition-all duration-200 flex gap-1">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className={cn("h-8 w-8 rounded-full", isDarkMode ? "hover:bg-slate-700" : "hover:bg-slate-100")}
+                                onClick={() => handleStar(message.id, message.starred)}
+                                aria-label={message.starred ? "Unstar message" : "Star message"}
+                              >
+                                <Star
+                                  size={14}
+                                  className={cn(
+                                    "transition-colors duration-200",
+                                    message.starred
+                                      ? "fill-yellow-500 text-yellow-500"
+                                      : isDarkMode ? "text-slate-500 hover:text-yellow-500" : "text-slate-400 hover:text-yellow-500"
+                                  )}
+                                />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent className={isDarkMode ? "bg-slate-700 border-slate-600 text-slate-200" : ""}>
+                              {message.starred ? "Remove from starred" : "Add to starred"}
+                            </TooltipContent>
+                          </Tooltip>
+
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className={cn("h-8 w-8 rounded-full", isDarkMode ? "hover:bg-slate-700" : "hover:bg-slate-100")}
+                                onClick={() => {
+                                  const parsed = parseAIResponse(message.content);
+                                  const contentToCopy = parsed ? parsed.response : message.content;
+                                  handleCopy(contentToCopy, message.id);
+                                }}
+                                aria-label="Copy message"
+                              >
+                                {copiedMessageId === message.id ? (
+                                  <Check size={14} className="text-green-500" />
+                                ) : (
+                                  <Copy size={14} className={isDarkMode ? "text-slate-500 hover:text-slate-400" : "text-slate-400 hover:text-slate-600"} />
+                                )}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent className={isDarkMode ? "bg-slate-700 border-slate-600 text-slate-200" : ""}>
+                              {copiedMessageId === message.id ? "Copied!" : "Copy message"}
+                            </TooltipContent>
+                          </Tooltip>
+
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className={cn("h-8 w-8 rounded-full", isDarkMode ? "hover:bg-slate-700" : "hover:bg-slate-100")}
+                                onClick={() => onPlayMessage(message.id, message.content)}
+                              >
+                                {currentlyPlaying === message.id ? <Pause size={16} /> : <Play size={16} />}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent className={isDarkMode ? "bg-slate-700 border-slate-600 text-slate-200" : ""}>
+                              {currentlyPlaying === message.id ? "Pause" : "Play"}
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
-          {isLoading && (
-            <div className="flex items-start gap-4 mb-8">
-              <Avatar className="h-10 w-10 mt-1 shadow-md border-2 border-white">
-                <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold">
-                  AI
-                </AvatarFallback>
-              </Avatar>
-              <div className={cn("border rounded-2xl rounded-tl-md p-6 shadow-sm", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200")}>
-                <div className="flex items-center gap-3">
-                  <div className="flex space-x-2">
-                    <div className="h-2 w-2 bg-blue-400 rounded-full animate-bounce"></div>
-                    <div className="h-2 w-2 bg-blue-400 rounded-full animate-bounce [animation-delay:-.3s]"></div>
-                    <div className="h-2 w-2 bg-blue-400 rounded-full animate-bounce [animation-delay:-.5s]"></div>
+            ))}
+            {isLoading && (
+              <div className="flex items-start gap-4 mb-8">
+                <Avatar className="h-10 w-10 mt-1 shadow-md border-2 border-white">
+                  <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold">
+                    AI
+                  </AvatarFallback>
+                </Avatar>
+                <div className={cn("border rounded-2xl rounded-tl-md p-6 shadow-sm", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200")}>
+                  <div className="flex items-center gap-3">
+                    <div className="flex space-x-2">
+                      <div className="h-2 w-2 bg-blue-400 rounded-full animate-bounce"></div>
+                      <div className="h-2 w-2 bg-blue-400 rounded-full animate-bounce [animation-delay:-.3s]"></div>
+                      <div className="h-2 w-2 bg-blue-400 rounded-full animate-bounce [animation-delay:-.5s]"></div>
+                    </div>
+                    <span className={cn("text-sm", isDarkMode ? "text-slate-400" : "text-slate-500")}>AI is thinking...</span>
                   </div>
-                  <span className={cn("text-sm", isDarkMode ? "text-slate-400" : "text-slate-500")}>AI is thinking...</span>
                 </div>
               </div>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-      )}
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+        )}
+      </div>
     </div>
   );
 };

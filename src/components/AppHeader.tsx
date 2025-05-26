@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Settings, MessageSquare, History, BookOpen } from "lucide-react";
+import { User, MessageSquare, History, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -13,13 +13,16 @@ import {
 import { useTheme } from "@/contexts/ThemeContext";
 import { Moon, Sun } from "@/components/Icons";
 import LibraryModal from './LibraryModal';
+import Cube3DIcon from './Cube3DIcon';
+import { Message } from "@/types/chat";
 
 interface AppHeaderProps {
   onToggleSidebar: () => void;
   sidebarOpen: boolean;
+  messages: Message[];
 }
 
-const AppHeader = ({ onToggleSidebar, sidebarOpen }: AppHeaderProps) => {
+const AppHeader = ({ onToggleSidebar, sidebarOpen, messages }: AppHeaderProps) => {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const navigate = useNavigate();
@@ -63,7 +66,6 @@ const AppHeader = ({ onToggleSidebar, sidebarOpen }: AppHeaderProps) => {
           >
             <History size={16} />
             <span className="hidden sm:inline">History</span>
-            <Badge variant="secondary" className="ml-1 text-xs">5</Badge>
           </Button>
 
           <Button
@@ -92,27 +94,14 @@ const AppHeader = ({ onToggleSidebar, sidebarOpen }: AppHeaderProps) => {
             )}
           </Button>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <Settings size={18} />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem>
-                <User size={16} className="mr-2" />
-                Profile Settings
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <MessageSquare size={16} className="mr-2" />
-                Chat Preferences
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                Export Conversations
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-10 w-10 p-0 [&_svg]:!size-8"
+            onClick={() => navigate("/")}
+          >
+            <Cube3DIcon />
+          </Button>
 
           <div className="bg-gradient-to-r from-emerald-500 to-blue-500 rounded-full w-9 h-9 flex items-center justify-center text-white cursor-pointer shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105" 
           onClick={() => navigate("/CharacterShowcase")}
@@ -127,25 +116,28 @@ const AppHeader = ({ onToggleSidebar, sidebarOpen }: AppHeaderProps) => {
         <div className="border-b border-border/40 bg-background/95 backdrop-blur-sm animate-in slide-in-from-top-2 duration-200">
           <div className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-lg">Recent Conversations</h3>
+              <h3 className="font-semibold text-lg">Recent Messages</h3>
               <Button variant="outline" size="sm">View All</Button>
             </div>
-            <div className="grid gap-3">
-              {[
-                "How can I optimize my React application?",
-                "What are the best practices for CSS Grid?",
-                "Tell me about React hooks",
-                "How to implement dark mode in React?",
-                "What is the difference between useState and useReducer?",
-              ].map((query, i) => (
-                <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors cursor-pointer group">
-                  <div className="flex flex-col">
-                    <span className="text-sm font-medium">{query}</span>
-                    <span className="text-xs text-muted-foreground">{`${(i + 1) * 3} minutes ago`}</span>
+            <div className="max-h-[300px] overflow-y-auto">
+              {messages
+                .filter(msg => msg.sender === "user")
+                .slice(-3)
+                .reverse()
+                .map((message, i) => (
+                  <div 
+                    key={message.id} 
+                    className="flex items-center justify-between p-3 rounded-lg bg-muted hover:bg-muted/80 transition-colors cursor-pointer group mb-2"
+                  >
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium line-clamp-1">{message.content}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                    <MessageSquare size={16} className="text-muted-foreground group-hover:text-foreground transition-colors" />
                   </div>
-                  <MessageSquare size={16} className="text-muted-foreground group-hover:text-foreground transition-colors" />
-                </div>
-              ))}
+                ))}
             </div>
           </div>
         </div>

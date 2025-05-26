@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Message } from "@/types/chat";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -40,6 +39,25 @@ const SearchModal = ({
   };
 
   const getMessagePreview = (content: string): string => {
+    try {
+      // Try to parse JSON content
+      const jsonMatch = content.match(/```(?:json)?\s*({[\s\S]*?})\s*```/) || 
+                       content.match(/json\s*({[\s\S]*?})\s*/) ||
+                       content.match(/```json\s*({[\s\S]*?})\s*```/);
+      
+      if (jsonMatch) {
+        const jsonStr = jsonMatch[1].trim();
+        const parsed = JSON.parse(jsonStr);
+        if (parsed.response) {
+          return parsed.response.length > 100 ? `${parsed.response.substring(0, 100)}...` : parsed.response;
+        }
+      }
+    } catch (error) {
+      // If JSON parsing fails, return the original content
+      return content.length > 100 ? `${content.substring(0, 100)}...` : content;
+    }
+    
+    // Default case: return truncated original content
     return content.length > 100 ? `${content.substring(0, 100)}...` : content;
   };
 
@@ -90,15 +108,17 @@ const SearchModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl h-[80vh] p-0">
-        <Tabs defaultValue="search" className="h-full">
+      <DialogContent className="max-w-2xl h-[80vh] p-0 flex flex-col">
+        <Tabs defaultValue="search" className="flex flex-col h-full">
+          {/* Tabs Header */}
           <div className="border-b px-4 py-2">
             <TabsList>
               <TabsTrigger value="search">Search Messages</TabsTrigger>
               <TabsTrigger value="starred">Starred Messages</TabsTrigger>
             </TabsList>
           </div>
-          
+
+          {/* Search Tab Content */}
           <TabsContent value="search" className="h-[calc(100%-3rem)]">
             <Command className="h-full">
               <CommandInput
@@ -106,15 +126,18 @@ const SearchModal = ({
                 value={searchQuery}
                 onValueChange={setSearchQuery}
               />
-              <CommandList>
+              <CommandList className="max-h-[calc(100%-3.5rem)] overflow-y-auto">
                 <CommandEmpty>No messages found.</CommandEmpty>
-                <CommandGroup>
-                  {filteredMessages.map(renderMessageItem)}
-                </CommandGroup>
+                {searchQuery !== "" && (
+                  <CommandGroup>
+                    {filteredMessages.map(renderMessageItem)}
+                  </CommandGroup>
+                )}
               </CommandList>
             </Command>
           </TabsContent>
 
+          {/* Starred Tab Content */}
           <TabsContent value="starred" className="h-[calc(100%-3rem)]">
             <Command className="h-full">
               <CommandInput
@@ -122,15 +145,17 @@ const SearchModal = ({
                 value={searchQuery}
                 onValueChange={setSearchQuery}
               />
-              <CommandList>
+              <CommandList className="max-h-[calc(100%-3.5rem)] overflow-y-auto">
                 <CommandEmpty>No starred messages found.</CommandEmpty>
-                <CommandGroup>
-                  {starredMessages
-                    .filter((message) =>
-                      message.content.toLowerCase().includes(searchQuery.toLowerCase())
-                    )
-                    .map(renderMessageItem)}
-                </CommandGroup>
+                {searchQuery !== "" && (
+                  <CommandGroup>
+                    {starredMessages
+                      .filter((message) =>
+                        message.content.toLowerCase().includes(searchQuery.toLowerCase())
+                      )
+                      .map(renderMessageItem)}
+                  </CommandGroup>
+                )}
               </CommandList>
             </Command>
           </TabsContent>
