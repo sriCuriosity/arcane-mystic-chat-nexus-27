@@ -13,8 +13,6 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Loader2 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
-import html2canvas from 'html2canvas';
-import { jsPDF } from 'jspdf';
 
 interface ChatAreaProps {
   messages: Message[];
@@ -40,32 +38,82 @@ const ChatArea = ({ messages, isLoading, onToggleStar, onPlayMessage, currentlyP
     messages.length > 0 && messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const formatTimestamp = (dateInput: string | number | Date) => {
-    const date = dateInput instanceof Date ? dateInput : new Date(dateInput);
-    if (isNaN(date.getTime())) {
-      return "";
-    }
-    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const formatTimestamp = (date: Date | string) => {
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    return dateObj.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
 
   const parseAIResponse = (content: string): ParsedResponse | null => {
     try {
-      // First try to find JSON content within markdown code blocks
-      const jsonMatch = content.match(/```(?:json)?\s*({[\s\S]*?})\s*```/) || 
+      // First, try to parse JSON format
+      const jsonMatch = content.match(/```json\s*({[\s\S]*?})\s*```/) || 
                        content.match(/json\s*({[\s\S]*?})\s*/) ||
                        content.match(/```json\s*({[\s\S]*?})\s*```/);
       
       if (jsonMatch) {
-        const jsonStr = jsonMatch[1].trim();
-        // Clean the string of any control characters
-        const cleanedJson = jsonStr.replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
-        return JSON.parse(cleanedJson);
+        const jsonStr = jsonMatch[1];
+        try {
+        const parsed = JSON.parse(jsonStr);
+        return parsed;
+        } catch (jsonError) {
+          // If JSON parsing fails, try to extract response and code manually
+          const responseMatch = jsonStr.match(/"response"\s*:\s*"([^"]*)"/);
+          // Try both backticks and double quotes for code
+          const codeMatch = jsonStr.match(/"code"\s*:\s*`([\s\S]*?)`/) || 
+                          jsonStr.match(/"code"\s*:\s*"([\s\S]*?)"(?=\s*})/);
+          
+          if (responseMatch && codeMatch) {
+            return {
+              response: responseMatch[1],
+              code: codeMatch[1]
+            };
+          }
+        }
       }
 
-      // If no code block found, try to parse the entire content as JSON
       if (content.trim().startsWith("{") && content.trim().endsWith("}")) {
-        const cleanedContent = content.trim().replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
-        return JSON.parse(cleanedContent);
+        try {
+        return JSON.parse(content);
+        } catch (jsonError) {
+          // If JSON parsing fails, try to extract response and code manually
+          const responseMatch = content.match(/"response"\s*:\s*"([^"]*)"/);
+          // Try both backticks and double quotes for code
+          const codeMatch = content.match(/"code"\s*:\s*`([\s\S]*?)`/) || 
+                          content.match(/"code"\s*:\s*"([\s\S]*?)"(?=\s*})/);
+          
+          if (responseMatch && codeMatch) {
+            return {
+              response: responseMatch[1],
+              code: codeMatch[1]
+            };
+          }
+        }
+      }
+
+      // Check for the markdown-like format with "### Render Code Below ###"
+      const codeMarkerMatch = content.match(/### Render Code Below ###\s*([\s\S]+)/);
+      if (codeMarkerMatch) {
+        const beforeCode = content.substring(0, content.indexOf("### Render Code Below ###")).trim();
+        const codeContent = codeMarkerMatch[1].trim();
+        
+        // Extract HTML from code blocks if present
+        const htmlMatch = codeContent.match(/```html\s*([\s\S]*?)\s*```/) || 
+                         codeContent.match(/```\s*(<!DOCTYPE html[\s\S]*?)\s*```/);
+        
+        const htmlCode = htmlMatch ? htmlMatch[1] : codeContent;
+        
+        return {
+          response: beforeCode,
+          code: htmlCode
+        };
+      }
+
+      // If the content is not JSON or markdown, treat it as a plain response
+      if (!content.includes("```json") && !content.includes("{") && !content.includes("### Render Code Below ###")) {
+        return {
+          response: content,
+          code: ""
+        };
       }
 
       return null;
@@ -100,39 +148,67 @@ const ChatArea = ({ messages, isLoading, onToggleStar, onPlayMessage, currentlyP
     setDownloadingId(messageId);
     
     try {
+      const html2canvas = (await import('html2canvas')).default;
+      
       const iframe = document.createElement('iframe');
       iframe.style.position = 'absolute';
       iframe.style.left = '-9999px';
       iframe.style.width = '1200px';
-      iframe.style.height = '800px';
+      iframe.style.height = 'auto';
+      iframe.style.minHeight = '800px';
+      iframe.style.border = 'none';
+      iframe.style.overflow = 'visible';
       document.body.appendChild(iframe);
 
       iframe.contentDocument?.open();
       iframe.contentDocument?.write(htmlContent);
       iframe.contentDocument?.close();
 
+      // Wait for iframe to load and content to render
       await new Promise(resolve => {
-        iframe.onload = resolve;
-        setTimeout(resolve, 2000);
+        iframe.onload = () => {
+          setTimeout(resolve, 3000); // Increased wait time
+        };
+        setTimeout(resolve, 5000); // Fallback timeout
       });
+
+      // Get the actual content height
+      const body = iframe.contentDocument?.body;
+      if (body) {
+        body.style.margin = '0';
+        body.style.padding = '20px';
+        const contentHeight = Math.max(
+          body.scrollHeight,
+          body.offsetHeight,
+          800
+        );
+        iframe.style.height = `${contentHeight + 40}px`;
+      }
+
+      // Wait a bit more for height adjustment
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       const canvas = await html2canvas(iframe.contentDocument?.body || document.body, {
         width: 1200,
-        height: 800,
-        scale: 2,
+        height: iframe.contentDocument?.body?.scrollHeight || 800,
+        scale: 1.5,
         useCORS: true,
         allowTaint: false,
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: 1200,
+        windowHeight: iframe.contentDocument?.body?.scrollHeight || 800,
       });
 
-      const imageData = canvas.toDataURL('image/png');
-      
-      // Store in localStorage
+      const imageData = canvas.toDataURL('image/png', 0.95);
+
+      // Save to library
       const savedImages = JSON.parse(localStorage.getItem('savedImages') || '[]');
       const newImage = {
         id: Date.now(),
         data: imageData,
         timestamp: new Date().toISOString(),
-        title: `Study Tool ${savedImages.length + 1}`
+        title: `Study Tool ${new Date().toLocaleDateString()}`
       };
       savedImages.push(newImage);
       localStorage.setItem('savedImages', JSON.stringify(savedImages));
@@ -145,6 +221,7 @@ const ChatArea = ({ messages, isLoading, onToggleStar, onPlayMessage, currentlyP
 
       document.body.removeChild(iframe);
       
+      toast.success("Study tool saved to library and downloaded!", { duration: 3000 });
     } catch (error) {
       console.error("Error downloading as image:", error);
       toast.error("Failed to download as image. Please try again.");
@@ -157,39 +234,142 @@ const ChatArea = ({ messages, isLoading, onToggleStar, onPlayMessage, currentlyP
     setDownloadingId(messageId);
     
     try {
+      const html2canvas = (await import('html2canvas')).default;
+      const jsPDF = (await import('jspdf')).jsPDF;
+      
+      // Create iframe with proper setup
       const iframe = document.createElement('iframe');
       iframe.style.position = 'absolute';
       iframe.style.left = '-9999px';
       iframe.style.width = '1200px';
-      iframe.style.height = '800px';
+      iframe.style.height = '1px';
+      iframe.style.border = 'none';
+      iframe.style.overflow = 'hidden';
       document.body.appendChild(iframe);
-
+  
+      // Enhanced HTML for PDF with better scaling
+      const enhancedHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            * { box-sizing: border-box; }
+            body { 
+              margin: 0 !important; 
+              padding: 15px !important; 
+              font-family: system-ui, -apple-system, sans-serif;
+              background: white;
+              width: 1170px !important;
+              font-size: 14px;
+              line-height: 1.4;
+            }
+            html, body { height: auto !important; }
+            /* Scale down content slightly for PDF */
+            body > * {
+              transform-origin: top left;
+              transform: scale(0.95);
+            }
+          </style>
+        </head>
+        <body>
+          ${htmlContent}
+        </body>
+        </html>
+      `;
+  
       iframe.contentDocument?.open();
-      iframe.contentDocument?.write(htmlContent);
+      iframe.contentDocument?.write(enhancedHtml);
       iframe.contentDocument?.close();
-
+  
+      // Wait for full content load
       await new Promise(resolve => {
-        iframe.onload = resolve;
-        setTimeout(resolve, 2000);
+        const checkLoaded = () => {
+          if (iframe.contentDocument?.readyState === 'complete') {
+            setTimeout(resolve, 1500); // More time for PDF preparation
+          } else {
+            setTimeout(checkLoaded, 100);
+          }
+        };
+        checkLoaded();
       });
-
-      const canvas = await html2canvas(iframe.contentDocument?.body || document.body, {
-        width: 1200,
-        height: 800,
-        scale: 2,
+  
+      // Get content dimensions
+      const iframeDoc = iframe.contentDocument;
+      const body = iframeDoc?.body;
+      const html = iframeDoc?.documentElement;
+      
+      if (!body || !html) {
+        throw new Error('Could not access iframe content');
+      }
+  
+      const contentHeight = Math.max(
+        body.scrollHeight,
+        body.offsetHeight,
+        html.clientHeight,
+        html.scrollHeight,
+        html.offsetHeight
+      );
+  
+      const contentWidth = 1200; // Fixed width for PDF
+  
+      // Resize iframe
+      iframe.style.width = `${contentWidth}px`;
+      iframe.style.height = `${contentHeight + 40}px`;
+  
+      await new Promise(resolve => setTimeout(resolve, 500));
+  
+      // Capture canvas
+      const canvas = await html2canvas(body, {
+        width: contentWidth,
+        height: contentHeight,
+        scale: 1.5, // Good balance for PDF
         useCORS: true,
         allowTaint: false,
+        backgroundColor: '#ffffff',
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: contentWidth,
+        windowHeight: contentHeight,
       });
-
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF();
-      const imgProps = pdf.getImageProperties(imgData);
+  
+      // Create PDF with proper sizing
+      const imgData = canvas.toDataURL('image/png', 0.9);
+      
+      // Calculate PDF dimensions (A4 proportions but flexible height)
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+  
       const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      
+      // Calculate image dimensions to fit PDF width
+      const imgProps = pdf.getImageProperties(imgData);
+      const imgWidth = pdfWidth - 20; // 10mm margin on each side
+      const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
+      
+      // If content is taller than one page, we might need multiple pages
+      if (imgHeight > pdfHeight - 20) {
+        // Calculate how many pages we need
+        const pageHeight = pdfHeight - 20; // Account for margins
+        const numPages = Math.ceil(imgHeight / pageHeight);
+        
+        for (let i = 0; i < numPages; i++) {
+          if (i > 0) pdf.addPage();
+          
+          const yPosition = -i * pageHeight;
+          pdf.addImage(imgData, 'PNG', 10, 10 + yPosition, imgWidth, imgHeight);
+        }
+      } else {
+        // Content fits on one page
+        pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
+      }
+  
       pdf.save(`study-tool-${Date.now()}.pdf`);
-
+  
       document.body.removeChild(iframe);
       
       toast.success("Study tool downloaded as PDF!", { duration: 3000 });
@@ -214,6 +394,8 @@ const ChatArea = ({ messages, isLoading, onToggleStar, onPlayMessage, currentlyP
   const renderAIMessage = (message: Message) => {
     const parsedResponse = parseAIResponse(message.content);
 
+    console.log("Parsed response for message:", message.id, parsedResponse); // Debug log
+
     if (parsedResponse && parsedResponse.code) {
       return (
         <div className="w-full space-y-4">
@@ -222,10 +404,12 @@ const ChatArea = ({ messages, isLoading, onToggleStar, onPlayMessage, currentlyP
             isDarkMode ? "bg-slate-700 border border-slate-600 text-slate-200" : "bg-gradient-to-r from-white to-blue-50 border border-blue-100"
           )}>
             <div className="flex items-start gap-3 mb-3">
-              <div className={cn("p-2 rounded-lg", isDarkMode ? "bg-slate-600" : "bg-blue-100")}>
-                <Sparkles size={16} className={isDarkMode ? "text-blue-400" : "text-blue-600"} />
+              <div className={cn("p-2 rounded-lg flex-shrink-0", isDarkMode ? "bg-slate-600" : "bg-blue-100")}>
+                <div className={cn("p-2 rounded-lg", isDarkMode ? "bg-slate-600" : "bg-indigo-100")}>
+                  <Sparkles size={16} className={isDarkMode ? "text-indigo-400" : "text-indigo-600"} />
+                </div>
               </div>
-              <div className="flex-1">
+              <div className="flex-1 flex-grow">
                 <p className="leading-relaxed">{parsedResponse.response}</p>
               </div>
             </div>
@@ -241,52 +425,93 @@ const ChatArea = ({ messages, isLoading, onToggleStar, onPlayMessage, currentlyP
                   Interactive Study Tool
                 </CardTitle>
                 
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      disabled={downloadingId === message.id}
-                      className={cn("hover:bg-slate-50", isDarkMode && "bg-slate-600 text-slate-100 border-slate-500 hover:bg-slate-500")}
-                    >
-                      {downloadingId === message.id ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600 mr-2"></div>
-                          Downloading...
-                        </>
-                      ) : (
-                        <>
-                          <Download size={14} className="mr-2" />
-                          Download
-                        </>
-                      )}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className={isDarkMode ? "bg-slate-700 border-slate-600 text-slate-200" : ""}>
-                    <DropdownMenuItem 
-                      onClick={() => downloadAsImage(parsedResponse.code!, message.id)}
-                      disabled={downloadingId === message.id}
-                      className={isDarkMode ? "hover:bg-slate-600" : ""}
-                    >
-                      <Image size={14} className="mr-2" />
-                      Download as PNG
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      onClick={() => downloadAsPDF(parsedResponse.code!, message.id)}
-                      disabled={downloadingId === message.id}
-                      className={isDarkMode ? "hover:bg-slate-600" : ""}
-                    >
-                      <FileText size={14} className="mr-2" />
-                      Download as PDF
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <div className="flex gap-2">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleCopy(parsedResponse.code!, message.id, true)}
+                        className={cn("hover:bg-slate-50", isDarkMode && "bg-slate-600 text-slate-100 border-slate-500 hover:bg-slate-500")}
+                      >
+                        {copiedCodeId === message.id ? (
+                          <Check size={14} className="mr-2" />
+                        ) : (
+                          <Copy size={14} className="mr-2" />
+                        )}
+                        Copy Code
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent className={isDarkMode ? "bg-slate-700 border-slate-600 text-slate-200" : ""}>
+                      {copiedCodeId === message.id ? "Code copied!" : "Copy HTML code"}
+                    </TooltipContent>
+                  </Tooltip>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        disabled={downloadingId === message.id}
+                        className={cn("hover:bg-slate-50", isDarkMode && "bg-slate-600 text-slate-100 border-slate-500 hover:bg-slate-500")}
+                      >
+                        {downloadingId === message.id ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600 mr-2"></div>
+                            Downloading...
+                          </>
+                        ) : (
+                          <>
+                            <Download size={14} className="mr-2" />
+                            Download
+                          </>
+                        )}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className={isDarkMode ? "bg-slate-700 border-slate-600 text-slate-200" : ""}>
+                      <DropdownMenuItem 
+                        onClick={() => downloadAsImage(parsedResponse.code!, message.id)}
+                        disabled={downloadingId === message.id}
+                        className={isDarkMode ? "hover:bg-slate-600" : ""}
+                      >
+                        <Image size={14} className="mr-2" />
+                        Download as PNG
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => downloadAsPDF(parsedResponse.code!, message.id)}
+                        disabled={downloadingId === message.id}
+                        className={isDarkMode ? "hover:bg-slate-600" : ""}
+                      >
+                        <FileText size={14} className="mr-2" />
+                        Download as PDF
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="p-6">
               <div className={cn("rounded-xl overflow-hidden shadow-inner", isDarkMode ? "border-2 border-slate-600 bg-slate-700" : "border-2 border-slate-200 bg-white")}>
                 <iframe
-                  srcDoc={parsedResponse.code}
+                  srcDoc={`
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                      <meta charset="UTF-8">
+                      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                      <style>
+                        body {
+                          margin: 0;
+                          padding: 0;
+                          font-family: system-ui, -apple-system, sans-serif;
+                        }
+                      </style>
+                    </head>
+                    <body>
+                      ${parsedResponse.code}
+                    </body>
+                    </html>
+                  `}
                   className="w-full h-96 border-0"
                   sandbox="allow-scripts"
                   title="Interactive Study Tool"
@@ -305,9 +530,11 @@ const ChatArea = ({ messages, isLoading, onToggleStar, onPlayMessage, currentlyP
       )}>
         <div className="flex items-start gap-3">
           <div className={cn("p-2 rounded-lg flex-shrink-0", isDarkMode ? "bg-slate-600" : "bg-blue-100")}>
-            <Sparkles size={16} className={isDarkMode ? "text-blue-400" : "text-blue-600"} />
+            <div className={cn("p-2 rounded-lg", isDarkMode ? "bg-slate-600" : "bg-indigo-100")}>
+              <Sparkles size={16} className={isDarkMode ? "text-indigo-400" : "text-indigo-600"} />
+            </div>
           </div>
-          <div className="flex-1">
+          <div className="flex-1 flex-grow">
             <p className="leading-relaxed whitespace-pre-wrap">{message.content}</p>
           </div>
         </div>
@@ -323,24 +550,24 @@ const ChatArea = ({ messages, isLoading, onToggleStar, onPlayMessage, currentlyP
             <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
               <Sparkles size={24} className="text-white" />
             </div>
-            <h3 className={cn("text-xl font-semibold mb-3", isDarkMode ? "text-slate-100" : "text-slate-800")}>Start Your Conversation</h3>
+            <h3 className={cn("text-xl font-semibold mb-3", isDarkMode ? "text-slate-100" : "text-slate-800")}>
+              Start Your Conversation
+            </h3>
             <p className={cn("leading-relaxed", isDarkMode ? "text-slate-300" : "text-slate-600")}>
               Ask me anything! I can help you learn, solve problems, or create interactive study materials.
             </p>
           </div>
         </div>
       ) : (
-        <div className="max-w-4xl mx-auto">
-          {messages.map((message) => (
+        <div className="space-y-6 max-w-4xl mx-auto">
+          {messages.map((message, index) => (
             <div
               key={message.id}
-              id={`message-${message.id}`}
               className={cn(
-                "flex flex-col mb-8 transition-all duration-200 group",
-                message.sender === "user" ? "items-end" : "items-start"
+                "flex items-start gap-4",
+                message.sender === "ai" ? "flex-row" : "flex-row-reverse"
               )}
             >
-              <div className="flex items-start gap-4 w-full max-w-[95%]">
                 {message.sender === "ai" && (
                   <Avatar className="h-10 w-10 mt-1 flex-shrink-0 shadow-md border-2 border-white">
                     <AvatarImage src="/ai-avatar.png" alt="AI" />
@@ -352,7 +579,7 @@ const ChatArea = ({ messages, isLoading, onToggleStar, onPlayMessage, currentlyP
 
                 <div className="flex flex-col w-full">
                   {message.sender === "user" ? (
-                    <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-2xl rounded-tr-md p-5 ml-auto shadow-lg">
+                  <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-2xl rounded-tr-md p-5 ml-auto shadow-lg max-w-lg">
                       <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
                     </div>
                   ) : (
@@ -433,7 +660,6 @@ const ChatArea = ({ messages, isLoading, onToggleStar, onPlayMessage, currentlyP
                         </Tooltip>
                       </div>
                     )}
-                  </div>
                 </div>
               </div>
             </div>

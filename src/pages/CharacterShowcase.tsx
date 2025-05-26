@@ -663,7 +663,7 @@ const CharacterShowcase: React.FC = () => {
         
         <div 
             className="character-logo bg-arcane rounded-full w-8 h-8 flex items-center justify-center text-white cursor-pointer select-none"
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/chat')}
           >
             🤖
           </div>
