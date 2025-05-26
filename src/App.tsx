@@ -9,6 +9,8 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import ChatPage from "./pages/ChatPage";
 import CharacterShowcase from "./pages/CharacterShowcase";
+import RoadChoice from "./pages/DomainSelector";
+import DomainSelector from "./pages/DomainSelector";
 
 const queryClient = new QueryClient();
 
@@ -20,7 +22,8 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<ChatPage />} />
+            <Route path="/" element={<DomainSelector />} />
+            <Route path="/Chat" element={<ChatPage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="/CharacterShowcase" element={<CharacterShowcase />}/>
             <Route path="*" element={<NotFound />} />

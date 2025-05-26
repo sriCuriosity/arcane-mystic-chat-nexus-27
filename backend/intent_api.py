@@ -8,302 +8,396 @@ from sklearn.metrics.pairwise import cosine_similarity
 import torch
 from collections import defaultdict
 import re
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+import time
+from functools import lru_cache
+import pickle
+import os
 
 app = FastAPI()
 
+# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],  # Allows all methods
-    allow_headers=["*"],  # Allows all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-# Load state-of-the-art sentence transformer model
-model = SentenceTransformer('all-mpnet-base-v2')  # Best general-purpose model as of 2023
+# Global variables for caching
+model = None
+intention_embeddings = None
+intention_texts = None
+tools_mapping = None
+keyword_cache = {}
+similarity_cache = {}
 
-# Enhanced intention database with embeddings precomputed
+# Thread pool for CPU-intensive tasks
+executor = ThreadPoolExecutor(max_workers=4)
+
+# Enhanced intention database (same as before but optimized structure)
 intention_data = [
     {
         "intention": "Creating Memes or Marketing Content",
         "tools": ["Meme Templates", "Branding Checklist", "Image Editing Shortcuts", "Color Palette Generator", "Font Pairing Guide", "Royalty-Free Image Libraries", "Content Calendar Template", "Swipe File", "Thumbnail Templates", "Hashtag Lists"],
-        "embedding": None
     },
     {
         "intention": "Editing and Proofreading Text",
         "tools": ["Style Guide PDF", "Proofreading Checklist", "Readability Score Tools", "Common Error List", "Text-to-Speech Tools", "Redundancy List", "Consistency Tracker", "PDF Markup Guides"],
-        "embedding": None
     },
     {
         "intention": "Improving Grammar and Vocabulary",
         "tools": ["Flashcard Decks", "Grammar Cheat Sheets", "Daily Writing Prompts", "Vocabulary Tracker", "Common Mistake Guides", "Idiom Dictionary", "Root Word List", "Synonym Wheels", "Grammar Quizzes", "Word-of-the-Day Calendar"],
-        "embedding": None
     },
     {
         "intention": "Personalizing Learning",
         "tools": ["Learning Style Quiz PDF", "Goal-Setting Template", "Resource Library", "Progress Tracker", "Reflection Journal Template", "Skill Tree Diagram", "Time Audit Sheet", "Bookmark Organizer", "Note-Taking Templates", "Reward System Chart"],
-        "embedding": None
     },
     {
         "intention": "Learning New Skills",
         "tools": ["Skill Roadmap PDF", "Project Checklist", "Resource Kit", "30-Day Challenge Calendar", "Troubleshooting Guide", "Project Templates", "Skill Assessment Quiz", "Habit Tracker", "Feedback Template", "Pomodoro Sheet"],
-        "embedding": None
+    },
+    {
+        "intention": "Learning Programming and Software Development",
+        "tools": ["Code Learning Roadmaps", "Practice Project Ideas", "Debugging Guides", "Code Review Checklists", "Algorithm Practice", "Development Environment Setup", "Version Control Guides", "Documentation Templates"],
+    },
+    {
+        "intention": "Advanced Code Learning and Analysis",
+        "tools": ["Step-by-Step Code Explanation", "Algorithm Optimization Suggestions", "Code Profiling & Bottleneck Identification", "Auto-Generate Unit Tests & Documentation", "Experiment with Code Variants"],
     },
     {
         "intention": "Creating Memes/Marketing Content (Enhanced)",
         "tools": ["Meme Template Gallery", "Brand Color Palette", "Hashtag Bank", "Caption Formulas", "Thumbnail Cheat Sheet", "Royalty-Free Image Links"],
-        "embedding": None
     },
     {
         "intention": "Editing/Proofreading Text (Enhanced)",
         "tools": ["Common Error Alerts", "Readability Score", "Tone Checker", "Redundancy Remover", "Consistency Flag", "Passive Voice Alert"],
-        "embedding": None
     },
     {
         "intention": "Improving Grammar/Vocabulary (Enhanced)",
         "tools": ["Vocab Flashcard", "Grammar Rule Cards", "Daily Word Challenge", "Mnemonic Generator", "Synonym Wheel", "Error Quiz"],
-        "embedding": None
     },
     {
         "intention": "Personalizing Learning (Enhanced)",
         "tools": ["Learning Style Quiz", "Goal Tracker", "Resource Kit", "Progress Bar", "Habit Streak", "Custom Study Plan"],
-        "embedding": None
     },
     {
         "intention": "Learning New Skills (Enhanced)",
         "tools": ["Project Idea Bank", "Cheat Sheet", "30-Day Challenge", "Expert Tip"],
-        "embedding": None
     },
     {
         "intention": "Prioritizing Tasks or Overcoming Procrastination",
         "tools": ["Eisenhower Matrix", "Time Blocking Planner", "2-Minute Rule Prompt", "Priority Ranking", "Procrastination Triggers List", "Pomodoro Timer Link", "Reward System"],
-        "embedding": None
     },
     {
         "intention": "Seeking Encouragement or Motivation",
         "tools": ["Progress Celebrator", "Motivational Quote Bank", "Streak Tracker", "Failure Reframer", "Energy Check-In", "Vision Board Snippets", "Self-Care Nudge"],
-        "embedding": None
     },
     {
         "intention": "Providing Feedback on Assignments",
         "tools": ["Rubric Shortcut", "Glow & Grow Template", "Plagiarism Check Link", "Tone Adjuster", "Wordiness Score", "Structure Feedback"],
-        "embedding": None
     },
     {
         "intention": "Simulating Characters for Games/Stories",
         "tools": ["Character Profile Template", "Archetype Bank", "Motivation Generator", "Relationship Web Map", "Appearance Builder", "Voice Test", "Alignment Chart"],
-        "embedding": None
     },
     {
         "intention": "Exploring Philosophical/Ethical Questions",
         "tools": ["Thought Experiment Primer", "Ethical Framework Guide", "Quote Analyzer", "Argument Structure", "Fallacy Identifier", "Philosophy Glossary", "Historical Context"],
-        "embedding": None
     },
     {
         "intention": "Generating Fictional Characters, Worlds, or Societies",
         "tools": ["Character Trait Generator", "World-Building Checklist", "Society Structure Template", "Magic/Technology System Builder", "Dialogue Style Guide", "Conflict Scenario Bank", "Species/Race Creator", "Faction Template"],
-        "embedding": None
     },
     {
         "intention": "Planning Travel Itineraries",
         "tools": ["Day-by-Day Planner", "Packing Checklist", "Local Experience Guide", "Transportation Matrix", "Souvenir Tracker"],
-        "embedding": None
     },
     {
         "intention": "Providing Shopping Advice or Product Comparisons",
         "tools": ["Pros vs. Cons Table", "Durability Score", "User Review Summary", "Sustainability Check", "Deal Tracker", "Use-Case Matcher", "Return Policy Cheat Sheet"],
-        "embedding": None
     },
     {
         "intention": "Simplifying or Rewriting Complex Texts",
         "tools": ["Visual Analogy", "Readability Score", "Chunking Tool"],
-        "embedding": None
     },
     {
         "intention": "Entertainment (Jokes, Stories, Games)",
         "tools": ["Joke Formula Templates", "Trivia Question Bank", "Role-Playing Scenario", "Puzzle Generator", "Mini-Game Rules", "Plot Twist Generator", "Choose-Your-Own-Adventure"],
-        "embedding": None
     },
     {
         "intention": "Creating Lesson Plans",
         "tools": ["Lesson Objective Builder", "Activity Bank", "Timeline Scheduler", "Assessment Rubric", "Differentiation Guide", "Resource Links", "Homework Generator"],
-        "embedding": None
     },
     {
         "intention": "Creating Scripts for Videos/Podcasts",
         "tools": ["Script Outline Template", "Hook Generator", "Dialogue Flowchart", "SEO Keyword Injector", "Tone Guide", "Call-to-Action Library", "Timing Calculator"],
-        "embedding": None
     },
     {
         "intention": "Generating AI Art Prompts",
         "tools": ["Style Modifiers", "Mood Descriptors", "Composition Hacks", "Artist Reference Prompts", "Iteration Tracker"],
-        "embedding": None
     },
     {
         "intention": "Designing User Interfaces",
         "tools": ["Wireframe Skeleton", "Color Palette Generator", "Component Library", "User Flow Map", "Accessibility Checklist", "Style Guide Template"],
-        "embedding": None
     },
     {
         "intention": "Prototyping Software Tools",
         "tools": ["Clickable Mockup Links", "User Feedback Form", "Edge Case Simulator", "Version Comparison", "Performance Metrics"],
-        "embedding": None
     },
     {
         "intention": "Writing Technical Documentation",
         "tools": ["API Reference Template", "Jargon Glossary", "Troubleshooting Guide", "Step-by-Step Tutorial", "Version History Log", "Visual Aid Integrator"],
-        "embedding": None
     },
     {
         "intention": "Writing Essays Reports or Academic Papers (Overview Users)",
         "tools": ["AI Essay Builder Wizard", "Paragraph Expander", "Thesis Statement Generator", "Outline-to-Essay Converter", "Citation & Reference Formatter"],
-        "embedding": None
     },
     {
         "intention": "Writing Essays Reports or Academic Papers (Deep Users)",
         "tools": ["Topic-Aware Essay Generation Using Fine-Tuned GPT", "Transformer-Based Section Generator", "Academic Style Transfer via Prompt Engineering", "Citation-Aware Essay Composer with RAG", "Multi-Modal Essay Drafting Assistant"],
-        "embedding": None
-    },
-    {
-        "intention": "Advanced Code Learning and Analysis (Deep Learners)",
-        "tools": ["Step-by-Step Code Explanation", "Algorithm Optimization Suggestions", "Code Profiling & Bottleneck Identification", "Auto-Generate Unit Tests & Documentation", "Experiment with Code Variants"],
-        "embedding": None
     },
     {
         "intention": "Practicing Conversation in Different Languages (Overview Users)",
         "tools": ["Roleplay Chatbots", "Daily Language Prompts", "Translation Flip Game", "Picture-Based Conversations", "Click-and-Listen Language Practice"],
-        "embedding": None
     },
     {
         "intention": "Practicing Conversation in Different Languages (Deep Learning Users)",
         "tools": ["Multilingual Dialogue Agent with Context Memory", "Accent and Dialect Simulation", "Grammar Error Detection and Correction (Bi-Lingual)", "Voice-to-Text + TTS Feedback Loop", "Role-Based Scenarios with Multimodal Input"],
-        "embedding": None
     },
     {
         "intention": "Summarizing Books and Articles (Skim Mode - Overview Users)",
         "tools": ["One Page Summary", "Animated Summary Video", "Bullet Point Summary"],
-        "embedding": None
     },
     {
         "intention": "Summarizing Books and Articles (Skim Mode - Deep Learning)",
         "tools": ["Audio Summary", "Mind Map View"],
-        "embedding": None
     },
     {
         "intention": "Summarizing Books and Articles (Dive Deep Mode)",
         "tools": ["Timer and Difficulty Indicator", "Meaning Translator in Reference to Book", "Make Your Own Notes", "Interactive Quiz", "Character Profiles", "Chapter-wise Notes with Thematic Messages"],
-        "embedding": None
     },
     {
         "intention": "Studying for Exams",
         "tools": ["Custom Study Plan", "Flashcard Decks", "Pomodoro Sheet/Timer", "Skill Assessment Quiz", "Progress Tracker", "Resource Kit"],
-        "embedding": None
     },
     {
         "intention": "Creative Writing",
         "tools": ["Character Profile Template", "Plot Twist Generator", "Dialogue Style Guide", "Writing Prompts", "Story Structure Templates"],
-        "embedding": None
     },
     {
         "intention": "Language Translation",
         "tools": ["Translation Flip Game", "Grammar Error Detection", "Context-Aware Translation", "Cultural Context Guides"],
-        "embedding": None
     },
     {
         "intention": "Math Problem Solving",
         "tools": ["Step-by-Step Solutions", "Formula Reference Sheets", "Practice Problem Generator", "Visual Math Explanations"],
-        "embedding": None
     },
     {
         "intention": "Research and Fact-Checking",
         "tools": ["Source Verification Tools", "Citation Generator", "Research Methodology Guides", "Fact-Check Templates"],
-        "embedding": None
     },
     {
         "intention": "Cooking and Recipe Assistance",
         "tools": ["Recipe Converter", "Substitution Guide", "Cooking Timer", "Nutritional Calculator", "Meal Planning Templates"],
-        "embedding": None
     },
     {
         "intention": "Fitness and Health Planning",
         "tools": ["Workout Planner", "Progress Tracker", "Nutrition Guide", "Goal Setting Templates", "Exercise Library"],
-        "embedding": None
     },
     {
         "intention": "Financial Planning and Budgeting",
         "tools": ["Budget Templates", "Expense Tracker", "Investment Calculator", "Debt Payoff Planner", "Financial Goal Tracker"],
-        "embedding": None
     },
     {
         "intention": "Home Organization and Cleaning",
         "tools": ["Cleaning Checklists", "Organization Systems", "Decluttering Guides", "Maintenance Schedules", "Storage Solutions"],
-        "embedding": None
     },
     {
         "intention": "Pet Care and Training",
         "tools": ["Training Schedules", "Health Tracking", "Behavior Guides", "Feeding Calculators", "Vet Appointment Trackers"],
-        "embedding": None
     },
     {
         "intention": "Gardening and Plant Care",
         "tools": ["Planting Calendars", "Watering Schedules", "Plant Care Guides", "Garden Layout Planners", "Pest Identification"],
-        "embedding": None
     },
     {
         "intention": "DIY and Home Improvement",
         "tools": ["Project Planners", "Tool Lists", "Safety Checklists", "Material Calculators", "Step-by-Step Guides"],
-        "embedding": None
     },
     {
         "intention": "Photography and Image Editing",
         "tools": ["Composition Guides", "Editing Tutorials", "Equipment Recommendations", "Photo Organization Systems", "Lighting Tips"],
-        "embedding": None
     },
     {
         "intention": "Music Learning and Practice",
         "tools": ["Practice Schedules", "Chord Charts", "Metronome Tools", "Progress Trackers", "Song Libraries"],
-        "embedding": None
     },
     {
         "intention": "Event Planning and Organization",
         "tools": ["Event Checklists", "Timeline Templates", "Budget Planners", "Guest Management", "Vendor Comparison Sheets"],
-        "embedding": None
     },
     {
         "intention": "Job Search and Career Development",
         "tools": ["Resume Templates", "Interview Preparation", "Skill Assessment", "Networking Guides", "Career Path Planners"],
-        "embedding": None
     },
     {
         "intention": "Small Business Management",
         "tools": ["Business Plan Templates", "Marketing Strategies", "Financial Tracking", "Customer Management", "Inventory Systems"],
-        "embedding": None
     },
     {
         "intention": "Mental Health and Wellness",
         "tools": ["Mood Trackers", "Meditation Guides", "Stress Management", "Self-Care Checklists", "Therapy Resources"],
-        "embedding": None
     },
     {
         "intention": "Parenting and Child Development",
         "tools": ["Development Milestones", "Activity Ideas", "Discipline Strategies", "Educational Resources", "Health Trackers"],
-        "embedding": None
     },
     {
         "intention": "Senior Care and Aging",
         "tools": ["Health Monitoring", "Safety Checklists", "Activity Planning", "Medication Management", "Support Resources"],
-        "embedding": None
     }
 ]
 
+# Enhanced keyword indicators for intent classification
+CASUAL_INDICATORS = {
+    # Personal questions
+    'age', 'name', 'how are you', 'hello', 'hi', 'thanks', 'thank you',
+    'good morning', 'good night', 'how old', 'where are you', 'who are you',
+    'what are you', 'nice to meet', 'goodbye', 'bye', 'see you',
+    
+    # Greetings and pleasantries
+    'hey', 'howdy', 'good afternoon', 'good evening', 'nice weather',
+    'how\'s it going', 'what\'s up', 'sup', 'greetings', 'salutations',
+    
+    # Personal information queries
+    'your birthday', 'your favorite', 'do you like', 'have you ever',
+    'where were you born', 'what do you think about', 'your opinion',
+    'tell me about yourself', 'introduce yourself', 'your hobbies',
+    'your interests', 'do you have friends', 'are you married',
+    'do you sleep', 'do you dream', 'do you eat', 'what do you do for fun',
+    
+    # Existential/philosophical casual questions
+    'are you real', 'are you alive', 'do you have feelings', 'are you conscious',
+    'what\'s your purpose', 'why do you exist', 'are you happy', 'do you get bored',
+    
+    # Small talk
+    'nice talking', 'chat', 'just curious', 'random question', 'by the way',
+    'anyway', 'just wondering', 'quick question about you',
+    
+    # Compliments/social
+    'you\'re cool', 'you\'re smart', 'you\'re helpful', 'i like you',
+    'you\'re funny', 'thanks for chatting',
+    
+    # Time-related casual
+    'what time is it', 'what day is it', 'when were you created',
+    'how long have you existed'
+}
 
-# Precompute embeddings for all intentions at startup
-for item in intention_data:
-    item["embedding"] = model.encode(item["intention"], convert_to_tensor=True,show_progress_bar=False)
+TASK_INDICATORS = {
+    # Core action verbs
+    'help', 'create', 'write', 'generate', 'make', 'build', 'plan', 'design',
+    'learn', 'study', 'practice', 'improve', 'edit', 'review', 'analyze',
+    'solve', 'fix', 'debug', 'explain', 'teach', 'guide', 'tutorial',
+    
+    # Learning/education
+    'understand', 'master', 'memorize', 'quiz me', 'test me', 'lesson',
+    'homework', 'assignment', 'project', 'research', 'summarize',
+    'outline', 'notes', 'flashcards', 'study guide',
+    
+    # Writing/content creation
+    'essay', 'article', 'blog post', 'story', 'poem', 'script',
+    'resume', 'cover letter', 'email', 'proposal', 'report',
+    'proofread', 'grammar', 'spelling', 'rewrite', 'paraphrase',
+    
+    # Programming/technical
+    'code', 'program', 'algorithm', 'function', 'debug', 'optimize',
+    'refactor', 'comment', 'documentation', 'api', 'database',
+    'website', 'app', 'software', 'bug', 'error', 'syntax',
+    
+    # Problem-solving
+    'calculate', 'compute', 'formula', 'equation', 'math', 'statistics',
+    'logic', 'reasoning', 'solution', 'approach', 'method', 'strategy',
+    
+    # Creative/design
+    'brainstorm', 'idea', 'concept', 'prototype', 'mockup', 'wireframe',
+    'logo', 'banner', 'poster', 'presentation', 'slide', 'template',
+    
+    # Business/productivity
+    'schedule', 'organize', 'manage', 'prioritize', 'workflow',
+    'process', 'checklist', 'timeline', 'budget', 'forecast',
+    'meeting', 'agenda', 'presentation', 'pitch',
+    
+    # Analysis/research
+    'compare', 'contrast', 'evaluate', 'assess', 'investigate',
+    'explore', 'examine', 'interpret', 'classify', 'categorize',
+    
+    # Goal-oriented language
+    'achieve', 'accomplish', 'complete', 'finish', 'deliver',
+    'implement', 'execute', 'perform', 'optimize', 'enhance'
+}
+
+CASUAL_PATTERNS = [
+    # Personal information patterns
+    r'\b(what|how|where|who|when)\s+(is|are|was|were)\s+(your|you)\b',
+    r'\b(tell me about yourself|introduce yourself)\b',
+    r'\b(how old are you|what\'s your age)\b',
+    r'\b(do you (like|have|know|think|feel|remember))\b',
+    r'\b(are you (real|alive|happy|sad|tired|busy))\b',
+    r'\b(what do you (think|feel|like|prefer))\b',
+    r'\b(have you (ever|been|seen|heard))\b',
+    
+    # Greetings and social patterns
+    r'\b(hi|hello|hey|good (morning|afternoon|evening|night))\b',
+    r'\b(how (are|is) (you|things|everything))\b',
+    r'\b(what\'s (up|new|happening))\b',
+    r'\b(nice (to meet|talking|chatting))\b',
+    r'\b(thanks|thank you|goodbye|bye|see you)\b',
+    
+    # Existential/philosophical casual questions
+    r'\b(what is (life|love|happiness|the meaning))\b',
+    r'\b(do you believe in)\b',
+    r'\b(what\'s your (favorite|opinion on))\b',
+    
+    # Just chatting indicators
+    r'\b(just (wondering|curious|asking|chatting))\b',
+    r'\b(random question|quick question about you)\b',
+    r'\b(by the way|anyway)\b'
+]
+
+TASK_PATTERNS = [
+    # Direct requests
+    r'\b(can you|could you|please|would you)\s+(help|create|write|make|build)\b',
+    r'\b(i need (help|assistance) with)\b',
+    r'\b(how (do i|can i|to))\s+(create|make|build|solve|fix|learn)\b',
+    
+    # Learning patterns
+    r'\b(teach me|show me|explain)\s+(how to|about)\b',
+    r'\b(i want to (learn|understand|master|study))\b',
+    r'\b(help me (with|understand|learn))\b',
+    
+    # Problem-solving patterns
+    r'\b(solve|fix|debug|resolve|troubleshoot)\b',
+    r'\b(what\'s wrong with|why (isn\'t|doesn\'t|won\'t))\b',
+    r'\b(how do i (fix|solve|resolve))\b',
+    
+    # Creation patterns
+    r'\b(create|generate|make|build|design|write)\s+(a|an|some)\b',
+    r'\b(i\'m (working on|building|creating|writing))\b'
+]
+
+SCORING_WEIGHTS = {
+    'exact_keyword_match': 1.0,
+    'pattern_match': 1.5,
+    'context_bonus': 0.5,
+    'length_penalty': 0.1
+}
 
 class IntentRequest(BaseModel):
     prompt: str
-    threshold: Optional[float] = 0.35  # Lowered threshold for better matching
+    threshold: Optional[float] = 0.25
 
 class ToolRecommendation(BaseModel):
     name: str
@@ -321,18 +415,19 @@ class IntentResponse(BaseModel):
     is_fallback: bool
     alternative_intentions: List[AlternativeIntention]
 
-def preprocess_text(text: str) -> str:
-    """Clean and normalize text for better matching"""
-    # Convert to lowercase
+# Optimized text preprocessing with caching
+@lru_cache(maxsize=1000)
+def preprocess_text_cached(text: str) -> str:
+    """Cached version of text preprocessing"""
     text = text.lower()
-    # Remove special characters but keep important punctuation
     text = re.sub(r'[^a-z0-9\s.,!?-]', ' ', text)
-    # Remove extra whitespace
     text = ' '.join(text.split())
     return text
 
-def extract_keywords(text: str) -> List[str]:
-    # Common words to exclude
+# Optimized keyword extraction with caching
+@lru_cache(maxsize=1000)
+def extract_keywords_cached(text: str) -> tuple:
+    """Cached version of keyword extraction"""
     stop_words = {'i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'ourselves', 'you', 'your', 'yours',
                  'yourself', 'yourselves', 'he', 'him', 'his', 'himself', 'she', 'her', 'hers',
                  'herself', 'it', 'its', 'itself', 'they', 'them', 'their', 'theirs', 'themselves',
@@ -341,133 +436,276 @@ def extract_keywords(text: str) -> List[str]:
                  'did', 'doing', 'a', 'an', 'the', 'and', 'but', 'if', 'or', 'because', 'as', 'until',
                  'while', 'of', 'at', 'by', 'for', 'with', 'about', 'against', 'between', 'into',
                  'through', 'during', 'before', 'after', 'above', 'below', 'to', 'from', 'up', 'down',
-                 'in', 'out', 'on', 'off', 'over', 'under', 'again', 'further', 'then', 'once'}
+                 'in', 'out', 'on', 'off', 'over', 'under', 'again', 'further', 'then', 'once', 'hi',
+                 'hello', 'hey', 'want'}
     
-    # Split text into words and filter out stop words
     words = text.lower().split()
-    keywords = [word for word in words if word not in stop_words and len(word) > 2]
+    keywords = tuple(word for word in words if word not in stop_words and len(word) > 2)
     return keywords
 
-def calculate_context_similarity(query: str, intention: str, tools: List[str]) -> float:
+def load_or_compute_embeddings():
+    """Load precomputed embeddings or compute them if not available"""
+    global model, intention_embeddings, intention_texts, tools_mapping
     
-    # Combine intention and tools for context
-    context = f"{intention} {' '.join(tools)}"
+    embeddings_file = "intention_embeddings.pkl"
     
-    # Get embeddings
-    query_embedding = model.encode(query, convert_to_tensor=True)
-    context_embedding = model.encode(context, convert_to_tensor=True)
+    if os.path.exists(embeddings_file):
+        print("Loading precomputed embeddings...")
+        with open(embeddings_file, 'rb') as f:
+            data = pickle.load(f)
+            intention_embeddings = data['embeddings']
+            intention_texts = data['texts']
+            tools_mapping = data['tools']
+    else:
+        print("Computing embeddings for the first time...")
+        # Load model only once
+        model = SentenceTransformer('all-mpnet-base-v2')
+        
+        # Prepare data
+        intention_texts = [item["intention"] for item in intention_data]
+        tools_mapping = {item["intention"]: item["tools"] for item in intention_data}
+        
+        # Compute embeddings in batch (much faster)
+        intention_embeddings = model.encode(intention_texts, convert_to_tensor=True, show_progress_bar=True)
+        
+        # Save for future use
+        with open(embeddings_file, 'wb') as f:
+            pickle.dump({
+                'embeddings': intention_embeddings,
+                'texts': intention_texts,
+                'tools': tools_mapping
+            }, f)
     
-    # Calculate similarity
-    similarity = cosine_similarity(
-        query_embedding.reshape(1, -1),
-        context_embedding.reshape(1, -1)
-    )[0][0]
+    # Load model for query encoding if not already loaded
+    if model is None:
+        model = SentenceTransformer('all-mpnet-base-v2')
     
-    return float(similarity)
+    print(f"Loaded {len(intention_texts)} intentions with precomputed embeddings")
 
-def semantic_search(query: str, intentions: List[Dict], threshold: float) -> Dict:
-    """Enhanced semantic search with context awareness and keyword matching"""
+async def compute_similarity_batch(query_embedding: torch.Tensor) -> np.ndarray:
+    """Compute similarities in batch for better performance"""
+    def _compute():
+        return cosine_similarity(
+            query_embedding.cpu().numpy().reshape(1, -1),
+            intention_embeddings.cpu().numpy()
+        )[0]
+    
+    # Run in thread pool to avoid blocking
+    loop = asyncio.get_event_loop()
+    similarities = await loop.run_in_executor(executor, _compute)
+    return similarities
+
+def calculate_keyword_bonus(query_keywords: tuple, intention: str, tools: List[str]) -> float:
+    """Calculate keyword matching bonus efficiently"""
+    if not query_keywords:
+        return 0.0
+    
+    # Create search text once
+    search_text = f"{intention.lower()} {' '.join(tool.lower() for tool in tools)}"
+    
+    # Count matches
+    matches = sum(1 for keyword in query_keywords if keyword in search_text)
+    return min(0.15, matches * 0.03)  # Max 15% bonus
+
+async def semantic_search_optimized(query: str, threshold: float) -> Dict:
+    """Highly optimized semantic search"""
     try:
-        # Preprocess query
-        processed_query = preprocess_text(query)
-        query_keywords = extract_keywords(processed_query)
+        # Use cached preprocessing
+        processed_query = preprocess_text_cached(query)
+        query_keywords = extract_keywords_cached(processed_query)
         
-        similarities = []
-        for item in intentions:
-            # Basic semantic similarity
-            base_similarity = cosine_similarity(
-                model.encode(processed_query, convert_to_tensor=True).reshape(1, -1),
-                item["embedding"].cpu().numpy().reshape(1, -1)
-            )[0][0]
-            
-            # Context similarity
-            context_similarity = calculate_context_similarity(
-                processed_query,
-                item["intention"],
-                item["tools"]
-            )
-            
-            keyword_matches = sum(1 for keyword in query_keywords 
-                                if keyword in item["intention"].lower() or 
-                                any(keyword in tool.lower() for tool in item["tools"]))
-            keyword_bonus = min(0.1, keyword_matches * 0.02)  # Max 10% bonus
-            
-            # Combined score with weights
-            final_score = (base_similarity * 0.6 + context_similarity * 0.4) + keyword_bonus
-            
-            similarities.append((item["intention"], final_score, item["tools"]))
+        # Check cache first
+        cache_key = f"{processed_query}_{threshold}"
+        if cache_key in similarity_cache:
+            return similarity_cache[cache_key]
         
-        # Sort by similarity
-        similarities.sort(key=lambda x: x[1], reverse=True)
+        # Encode query (single operation)
+        query_embedding = model.encode(processed_query, convert_to_tensor=True)
         
-        # Get top matches
-        top_matches = similarities[:3]
+        # Compute all similarities in batch
+        base_similarities = await compute_similarity_batch(query_embedding)
         
-        # If no matches above threshold, return top match with fallback
-        if top_matches[0][1] < threshold:
-            return {
-                "matched_intention": top_matches[0][0],
-                "confidence": float(top_matches[0][1]),
-                "tools": top_matches[0][2],
-                "is_fallback": True,
-                "alternatives": [
-                    {"intention": intent, "score": float(score)}
-                    for intent, score, _ in top_matches[1:]
-                ]
-            }
+        # Calculate final scores efficiently
+        final_scores = []
+        for i, (intention, base_sim) in enumerate(zip(intention_texts, base_similarities)):
+            tools = tools_mapping[intention]
+            keyword_bonus = calculate_keyword_bonus(query_keywords, intention, tools)
+            final_score = base_sim + keyword_bonus
+            final_scores.append((intention, final_score, tools))
         
-        return {
-            "matched_intention": top_matches[0][0],
-            "confidence": float(top_matches[0][1]),
-            "tools": top_matches[0][2],
-            "is_fallback": False,
+        # Sort once
+        final_scores.sort(key=lambda x: x[1], reverse=True)
+        
+        # Prepare result
+        top_match = final_scores[0]
+        result = {
+            "matched_intention": top_match[0] if top_match[1] >= threshold else None,
+            "confidence": float(top_match[1]),
+            "tools": top_match[2] if top_match[1] >= threshold else [],
+            "is_fallback": top_match[1] < threshold,
             "alternatives": [
                 {"intention": intent, "score": float(score)}
-                for intent, score, _ in top_matches[1:]
+                for intent, score, _ in final_scores[1:4]
             ]
         }
+        
+        # Cache result (limit cache size)
+        if len(similarity_cache) < 500:
+            similarity_cache[cache_key] = result
+        
+        return result
+        
     except Exception as e:
         print(f"Error in semantic search: {str(e)}")
         return {
             "matched_intention": None,
             "confidence": 0.0,
+            "tools": [],
             "is_fallback": True,
             "alternatives": []
         }
 
+def enhanced_classify_general_intent(query: str) -> Dict:
+    """Enhanced intent classification with comprehensive indicators"""
+    
+    query_lower = query.lower().strip()
+    
+    # Calculate scores
+    casual_score = 0
+    task_score = 0
+    
+    # Keyword matching with case-insensitive search
+    for indicator in CASUAL_INDICATORS:
+        if indicator in query_lower:
+            casual_score += SCORING_WEIGHTS['exact_keyword_match']
+    
+    for indicator in TASK_INDICATORS:
+        if indicator in query_lower:
+            task_score += SCORING_WEIGHTS['exact_keyword_match']
+    
+    # Pattern matching (more reliable than keywords)
+    for pattern in CASUAL_PATTERNS:
+        if re.search(pattern, query_lower):
+            casual_score += SCORING_WEIGHTS['pattern_match']
+    
+    for pattern in TASK_PATTERNS:
+        if re.search(pattern, query_lower):
+            task_score += SCORING_WEIGHTS['pattern_match']
+    
+    # Context and length considerations
+    query_length = len(query.split())
+    
+    # Very short queries are often casual
+    if query_length <= 3:
+        casual_score += SCORING_WEIGHTS['context_bonus']
+    # Longer queries are often task-oriented
+    elif query_length > 10:
+        task_score += SCORING_WEIGHTS['context_bonus']
+    
+    # Question word analysis
+    question_words = ['what', 'how', 'why', 'when', 'where', 'who', 'which']
+    starts_with_question = any(query_lower.startswith(qw) for qw in question_words)
+    
+    if starts_with_question:
+        # Questions about personal info are casual
+        if any(personal in query_lower for personal in ['your', 'you are', 'you have']):
+            casual_score += SCORING_WEIGHTS['context_bonus']
+        # Questions about how to do something are task-oriented
+        elif 'how to' in query_lower or 'how do' in query_lower or 'how can' in query_lower:
+            task_score += SCORING_WEIGHTS['context_bonus']
+    
+    # Final classification
+    total_score = casual_score + task_score
+    
+    if total_score == 0:
+        # No clear indicators - use length and structure as fallback
+        if query_length <= 5 and starts_with_question:
+            return {"category": "casual", "confidence": 0.6}
+        else:
+            return {"category": "task", "confidence": 0.4}
+    
+    casual_confidence = casual_score / total_score
+    task_confidence = task_score / total_score
+    
+    if casual_confidence > task_confidence:
+        return {
+            "category": "casual", 
+            "confidence": min(0.95, 0.5 + casual_confidence * 0.4),
+            "scores": {"casual": casual_score, "task": task_score}
+        }
+    else:
+        return {
+            "category": "task", 
+            "confidence": min(0.95, 0.5 + task_confidence * 0.4),
+            "scores": {"casual": casual_score, "task": task_score}
+        }
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize embeddings on startup"""
+    load_or_compute_embeddings()
+
 @app.post("/classify-intent", response_model=IntentResponse)
 async def classify_intent(request: IntentRequest):
-    result = semantic_search(request.prompt, intention_data, request.threshold)
+    start_time = time.time()
     
-    if result["is_fallback"]:
-        return IntentResponse(
+    # First, classify if the query is casual or task-oriented
+    general_intent = enhanced_classify_general_intent(request.prompt)
+    
+    # If it's a casual conversation, return early with appropriate response
+    if general_intent["category"] == "casual":
+        response = IntentResponse(
             matched_intention=None,
-            confidence=result["confidence"],
+            confidence=general_intent["confidence"],
             recommended_tools=[],
             is_fallback=True,
             alternative_intentions=[]
         )
+        return response
     
-    # Prepare tool recommendations
-    tools = []
-    for tool_name in result["tools"][:3]:  # Top 3 tools
-        tools.append(ToolRecommendation(
-            name=tool_name,
-            description=tools_database.get(tool_name, "Description not available"),
-            confidence=min(1.0, result["confidence"] * 0.9)  # Slightly lower than intent confidence
-        ))
+    # For task-oriented queries, proceed with semantic search
+    result = await semantic_search_optimized(request.prompt, request.threshold)
     
-    return IntentResponse(
-        matched_intention=result["matched_intention"],
-        confidence=result["confidence"],
-        recommended_tools=tools,
-        is_fallback=False,
-        alternative_intentions=result["alternatives"]
-    )
+    if result["is_fallback"]:
+        response = IntentResponse(
+            matched_intention=result["matched_intention"],
+            confidence=result["confidence"],
+            recommended_tools=[],
+            is_fallback=True,
+            alternative_intentions=[
+                AlternativeIntention(intention=alt["intention"], score=alt["score"])
+                for alt in result["alternatives"]
+            ]
+        )
+    else:
+        # Prepare tool recommendations efficiently
+        tools = [
+            ToolRecommendation(
+                name=tool_name,
+                description=tools_database.get(tool_name, "Tool for learning and skill development"),
+                confidence=min(1.0, result["confidence"] * 0.9)
+            )
+            for tool_name in result["tools"][:5]
+        ]
+        
+        response = IntentResponse(
+            matched_intention=result["matched_intention"],
+            confidence=result["confidence"],
+            recommended_tools=tools,
+            is_fallback=False,
+            alternative_intentions=[
+                AlternativeIntention(intention=alt["intention"], score=alt["score"])
+                for alt in result["alternatives"]
+            ]
+        )
+    
+    end_time = time.time()
+    print(f"Request processed in {end_time - start_time:.3f} seconds")
+    
+    return response
 
-# Example tools database (should be complete)
+# Keep the original tools_database for compatibility
 tools_database = {
-    # Creating Memes or Marketing Content
     "Meme Templates": "Pre-designed Canva/Adobe Spark templates for quick meme creation",
     "Branding Checklist": "A PDF checklist for consistency (fonts, colors, tone)",
     "Image Editing Shortcuts": "Cheat sheets for GIMP/Pixlr tools (e.g., layers, filters)",
@@ -478,8 +716,6 @@ tools_database = {
     "Swipe File": "A folder of screenshots/PDFs for inspiration (ads, captions, designs)",
     "Thumbnail Templates": "Pre-sized YouTube/Instagram thumbnail designs in Canva",
     "Hashtag Lists": "Organized spreadsheets of niche hashtags for social media",
-    
-    # Editing and Proofreading Text
     "Style Guide PDF": "Downloadable AP/Chicago Manual rules for quick reference",
     "Proofreading Checklist": "A step-by-step list (grammar, punctuation, flow)",
     "Readability Score Tools": "Hemingway Editor's readability stats for clarity",
@@ -488,8 +724,6 @@ tools_database = {
     "Redundancy List": "A PDF of phrases to avoid (e.g., 'absolutely essential')",
     "Consistency Tracker": "Spreadsheet to track terms (e.g., UK vs. US spelling)",
     "PDF Markup Guides": "Shortcuts for Adobe Acrobat's comment/highlight tools",
-    
-    # Improving Grammar and Vocabulary
     "Flashcard Decks": "Pre-made Anki decks for SAT/GRE vocabulary",
     "Grammar Cheat Sheets": "One-page PDFs for tenses, prepositions, articles",
     "Daily Writing Prompts": "A printable list of 30 prompts for practice",
@@ -500,8 +734,6 @@ tools_database = {
     "Synonym Wheels": "Visual charts of word alternatives (e.g., 'happy')",
     "Grammar Quizzes": "Printable worksheets with answer keys",
     "Word-of-the-Day Calendar": "A PDF calendar with daily vocabulary",
-    
-    # Personalizing Learning
     "Learning Style Quiz PDF": "Self-assessment to identify visual/auditory preferences",
     "Goal-Setting Template": "A Notion/Google Docs table for SMART goals",
     "Resource Library": "A Notion database of bookmarked articles/videos",
@@ -512,8 +744,6 @@ tools_database = {
     "Bookmark Organizer": "Use Raindrop.io to tag/categorize learning links",
     "Note-Taking Templates": "Customizable layouts for Cornell/outline methods",
     "Reward System Chart": "A printable sticker chart for achieving mini-goals",
-    
-    # Learning New Skills
     "Skill Roadmap PDF": "Step-by-step guides (e.g., 'Learn Python in 6 Months')",
     "Project Checklist": "Break skills into projects (e.g., 'Build a website')",
     "Resource Kit": "Curated PDFs/links for free courses (Coursera, YouTube)",
@@ -524,8 +754,6 @@ tools_database = {
     "Habit Tracker": "A Google Sheets grid to log daily practice",
     "Feedback Template": "A Google Form to collect peer reviews on projects",
     "Pomodoro Sheet": "Printable timetables for focused skill-building sessions",
-    
-    # Prioritizing Tasks or Overcoming Procrastination
     "Eisenhower Matrix": "Quadrant-based grid (Urgent/Important) for task sorting",
     "Time Blocking Planner": "Pre-formatted hourly schedule templates",
     "2-Minute Rule Prompt": "If it takes <2 mins, do it now ⏱️",
@@ -533,8 +761,6 @@ tools_database = {
     "Procrastination Triggers List": "Common causes (e.g., fear of failure) + fixes",
     "Pomodoro Timer Link": "Pre-set timers for 25/5-minute cycles",
     "Reward System": "'Complete X → Reward Y' templates",
-    
-    # Seeking Encouragement or Motivation
     "Progress Celebrator": "Auto-highlight milestones (e.g., '50% done! 🎉')",
     "Motivational Quote Bank": "Categorized by themes (perseverance, creativity)",
     "Streak Tracker": "Visual counter (e.g., '🔥 7-Day Streak!')",
@@ -542,162 +768,34 @@ tools_database = {
     "Energy Check-In": "Rate your focus [🟩🟩⬜⬜⬜] → Take a break?",
     "Vision Board Snippets": "Imagery/text snippets for goal visualization",
     "Self-Care Nudge": "Hydrate 🚰 | Stretch 🧘 | Breathe 🌬️",
-    
-    # Providing Feedback on Assignments
-    "Rubric Shortcut": "Pre-defined criteria (e.g., 'Clarity: 4/5 ✅')",
-    "Glow & Grow Template": "🌟 Strength: ... | 🌱 Improvement: ...",
-    "Plagiarism Check Link": "Quick scan tool integration",
-    "Tone Adjuster": "Suggestions (e.g., 'More formal/professional 📜')",
-    "Wordiness Score": "Reduce 20% for conciseness ✂️",
-    "Structure Feedback": "Intro ✅ | Body ➡️ Expand | Conclusion ❌ Missing",
-    
-    # Simulating Characters for Games/Stories
-    "Character Profile Template": "Name, backstory, traits, flaws",
-    "Archetype Bank": "Hero 🦸, Mentor 🧙, Villain 😈",
-    "Motivation Generator": "Goal: Revenge | Fear: Failure",
-    "Relationship Web Map": "Visualize character connections",
-    "Appearance Builder": "Hair: wild | Scar: left cheek 🔪",
-    "Voice Test": "How would they say 'Hello'? 🗣️",
-    "Alignment Chart": "Lawful/Neutral/Chaotic + Good/Neutral/Evil",
-    
-    # Exploring Philosophical/Ethical Questions
-    "Thought Experiment Primer": "Trolley Problem 🚃, Ship of Theseus ⛵",
-    "Ethical Framework Guide": "Utilitarianism ⚖️, Deontology 📜, Virtue Ethics 🌟",
-    "Quote Analyzer": "Nietzsche: 'What doesn't kill you...' → Discuss 💬",
-    "Argument Structure": "Premise + Conclusion breakdown",
-    "Fallacy Identifier": "Ad hominem ⚠️ | Strawman 🎭",
-    "Philosophy Glossary": "Terms (e.g., 'Existentialism') + definitions",
-    "Historical Context": "Link ideas to eras (e.g., Stoicism → Ancient Rome 🏛️)",
-    
-    # Generating Fictional Characters, Worlds, or Societies
-    "Character Trait Generator": "Randomized lists of quirks, flaws, and motivations",
-    "World-Building Checklist": "Geography, politics, culture, religion, technology",
-    "Society Structure Template": "Hierarchy, laws, economy, conflicts",
-    "Magic/Technology System Builder": "Rules, limitations, and consequences",
-    "Dialogue Style Guide": "Formal, slang, or era-specific speech patterns",
-    "Conflict Scenario Bank": "Wars, betrayals, natural disasters",
-    "Species/Race Creator": "Biology, culture, and societal roles",
-    "Faction Template": "Goals, allies, enemies, symbols",
-    
-    # Planning Travel Itineraries
-    "Day-by-Day Planner": "Hourly activity slots with travel time estimates",
-    "Packing Checklist": "Essentials sorted by climate/activity (e.g., beach vs. hiking)",
-    "Local Experience Guide": "Must-try foods, festivals, hidden gems",
-    "Transportation Matrix": "Compare trains, buses, rentals, or rideshares",
-    "Souvenir Tracker": "Budget and space for gifts/keepsakes",
-    
-    # Providing Shopping Advice or Product Comparisons
-    "Pros vs. Cons Table": "Side-by-side comparison of features",
-    "Durability Score": "Material quality, warranty, brand reputation",
-    "User Review Summary": "Aggregated ratings for ease of use, longevity",
-    "Sustainability Check": "Eco-friendly materials, ethical sourcing",
-    "Deal Tracker": "Price history, seasonal discounts, coupon codes",
-    "Use-Case Matcher": "'Best for X' labels (e.g., 'gaming' vs. 'office work')",
-    "Return Policy Cheat Sheet": "Time limits, restocking fees, conditions",
-    
-    # Simplifying or Rewriting Complex Texts
-    "Visual Analogy": "Explain concepts using metaphors (e.g., 'DNS is a phonebook')",
-    "Readability Score": "Simplify to a target grade level (e.g., Grade 8)",
-    "Chunking Tool": "Split long paragraphs into digestible sections",
-    
-    # Entertainment (Jokes, Stories, Games)
-    "Joke Formula Templates": "Setup + punchline structures (e.g., puns, wordplay)",
-    "Trivia Question Bank": "Fun facts with multiple-choice answers",
-    "Role-Playing Scenario": "Premise, characters, and conflicts for improvisation",
-    "Puzzle Generator": "Riddles, logic puzzles, or escape-room challenges",
-    "Mini-Game Rules": "Quick card/dice games (e.g., 'Roll for initiative')",
-    "Plot Twist Generator": "Random unexpected events (e.g., 'The mentor is the villain!')",
-    "Choose-Your-Own-Adventure": "Decision branches (e.g., 'Go left → page 2')",
-    
-    # Creating Lesson Plans
-    "Lesson Objective Builder": "SMART goal templates (Specific, Measurable, Achievable)",
-    "Activity Bank": "Quick engagement ideas (discussions, quizzes, group work)",
-    "Timeline Scheduler": "Minute-by-minute breakdowns for class time",
-    "Assessment Rubric": "Grading criteria for projects/exams",
-    "Differentiation Guide": "Adapt activities for skill levels (e.g., ESL, advanced)",
-    "Resource Links": "Curated videos, articles, or worksheets",
-    "Homework Generator": "Practice questions aligned to objectives",
-    
-    # Creating Scripts for Videos/Podcasts
-    "Script Outline Template": "Intro, segments, transitions, outro",
-    "Hook Generator": "Attention-grabbing opening lines (e.g., 'Did you know...?')",
-    "Dialogue Flowchart": "Visualize speaker interactions",
-    "SEO Keyword Injector": "Optimize scripts for search algorithms",
-    "Tone Guide": "Match voice (formal, humorous, conversational)",
-    "Call-to-Action Library": "'Subscribe,' 'Visit our site,' etc.",
-    "Timing Calculator": "Word count ↔ runtime estimates",
-    
-    # Generating AI Art Prompts
-    "Style Modifiers": "Keywords (e.g., 'cyberpunk,' 'watercolor,' 'isometric')",
-    "Mood Descriptors": "'Serene,' 'chaotic,' 'nostalgic.'",
-    "Composition Hacks": "Rule of thirds, leading lines, negative space",
-    "Artist Reference Prompts": "'In the style of Van Gogh 🎨.'",
-    "Iteration Tracker": "Compare prompt versions and outputs",
-    
-    # Designing User Interfaces
-    "Wireframe Skeleton": "Basic layout grids (header, body, footer)",
-    "Color Palette Generator": "Accessible contrast ratios + hex codes",
-    "Component Library": "Buttons, forms, icons, menus",
-    "User Flow Map": "Steps for navigation (e.g., signup → dashboard)",
-    "Accessibility Checklist": "Alt text, keyboard navigation, ARIA labels",
-    "Style Guide Template": "Typography, spacing, hover states",
-    
-    # Prototyping Software Tools
-    "Clickable Mockup Links": "Tools like Figma/Adobe XD for interactive demos",
-    "User Feedback Form": "Template questions for usability testing",
-    "Edge Case Simulator": "'What if the user inputs invalid data?'",
-    "Version Comparison": "Side-by-side prototypes (A/B testing)",
-    "Performance Metrics": "Load times, responsiveness checks",
-    
-    # Writing Technical Documentation
-    "API Reference Template": "Endpoints, parameters, examples",
-    "Jargon Glossary": "Simplify terms (e.g., 'RESTful API → web service rules')",
-    "Troubleshooting Guide": "Error codes + solutions",
-    "Step-by-Step Tutorial": "Code snippets with annotations",
-    "Version History Log": "Track updates/changes",
-    "Visual Aid Integrator": "Screenshots, diagrams, GIFs",
-    
-    # Writing Essays Reports or Academic Papers
-    "AI Essay Builder Wizard": "Guided form for topic, tone, and key points to generate full essays",
-    "Paragraph Expander": "Develops short ideas into full academic paragraphs",
-    "Thesis Statement Generator": "Creates 2-3 thesis statements for essay topics",
-    "Outline-to-Essay Converter": "Converts bullet-point outlines into complete essays",
-    "Citation & Reference Formatter": "Formats sources in APA, MLA, or Chicago style",
-    "Topic-Aware Essay Generation": "Fine-tuned GPT for domain-specific academic writing",
-    "Transformer-Based Section Generator": "Generates essays section-by-section maintaining logical flow",
-    "Academic Style Transfer": "Converts informal input into academic tone",
-    "Citation-Aware Essay Composer": "RAG system that fetches real-time academic references",
-    "Multi-Modal Essay Drafting Assistant": "Converts diagrams/mind maps into structured essay text",
-    
-    # Advanced Code Learning and Analysis
-    "Step-by-Step Code Explanation": "Breaks down complex code into logical chunks with detailed explanations",
-    "Algorithm Optimization Suggestions": "Analyzes code and suggests performance improvements",
-    "Code Profiling & Bottleneck Identification": "Identifies bottlenecks and inefficient sections",
-    "Auto-Generate Unit Tests & Documentation": "Generates thorough unit tests and documentation",
-    "Experiment with Code Variants": "Provides alternative implementations using different paradigms",
-    
-    # Practicing Conversation in Different Languages
-    "Roleplay Chatbots": "Chat with AI characters in different scenarios and languages",
-    "Daily Language Prompts": "Daily sentences/phrases/situations for language practice",
-    "Translation Flip Game": "Interactive translation and conversational practice",
-    "Picture-Based Conversations": "Visual prompts for language description and roleplay",
-    "Click-and-Listen Language Practice": "Audio clips for listening comprehension practice",
-    "Multilingual Dialogue Agent": "Multi-turn conversation system with context memory",
-    "Accent and Dialect Simulation": "Regional dialects and accent variations",
-    "Grammar Error Detection and Correction": "Real-time feedback with grammatical corrections",
-    "Voice-to-Text + TTS Feedback Loop": "Conversational feedback loop with speech recognition",
-    "Role-Based Scenarios with Multimodal Input": "Immersive scenarios with visual and text input",
-    
-    # Summarizing Books and Articles
-    "One Page Summary": "PDF-style compact summary with title, author, themes and overall concept",
-    "Animated Summary Video": "Short video explanations under 3 minutes with YouTube links",
-    "Bullet Point Summary": "Condensed version in short bullet points for quick glance",
-    "Audio Summary": "2-3 minute narration for auditory learners",
-    "Mind Map View": "Visual layout of key ideas, characters, and plot flow",
-    "Timer and Difficulty Indicator": "Expected completion time and difficulty level",
-    "Meaning Translator": "Context-specific meaning lookup within the book",
-    "Make Your Own Notes": "Editable notepad for personal notes and references",
-    "Interactive Quiz": "Chapter-based quizzes to promote active learning",
-    "Character Profiles": "Detailed descriptions and evolution of key characters",
-    "Chapter-wise Notes with Thematic Messages": "Chapter summaries with symbolism and author's message breakdowns"
+    "Code Learning Roadmaps": "Structured learning paths for different programming languages",
+    "Practice Project Ideas": "Hands-on coding projects for skill development",
+    "Debugging Guides": "Step-by-step debugging techniques and tools",
+    "Code Review Checklists": "Quality assurance checklists for code reviews",
+    "Algorithm Practice": "Coding challenges and algorithm exercises",
+    "Development Environment Setup": "IDE and toolchain configuration guides",
+    "Version Control Guides": "Git workflows and best practices",
+    "Documentation Templates": "Templates for technical documentation",
+    "Step-by-Step Code Explanation": "Detailed code breakdowns and explanations",
+    "Algorithm Optimization Suggestions": "Performance improvement recommendations",
+    "Code Profiling & Bottleneck Identification": "Performance analysis tools",
+    "Auto-Generate Unit Tests & Documentation": "Automated testing and documentation tools",
+    "Experiment with Code Variants": "Alternative implementation approaches"
 }
+
+@app.get("/")
+async def root():
+    #return {"message": "Optimized Intent Classification API is running!"}
+    return 
+
+@app.get("/health")
+async def health_check():
+    return {
+        "status": "healthy",
+        "cache_size": len(similarity_cache),
+        "intentions_loaded": len(intention_texts) if intention_texts else 0
+    }
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
