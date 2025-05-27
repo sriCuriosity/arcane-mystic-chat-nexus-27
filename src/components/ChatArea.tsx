@@ -14,6 +14,7 @@ import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Loader2 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { motion } from 'framer-motion';
+import ReactMarkdown from "react-markdown";
 
 interface ChatAreaProps {
   messages: Message[];
@@ -392,6 +393,33 @@ const ChatArea = ({ messages, isLoading, onToggleStar, onPlayMessage, currentlyP
     );
   };
 
+  const parseMarkdown = (text: string) => {
+    // Remove reference numbers like [1][2][5]
+    text = text.replace(/\[\d+\]/g, '');
+    
+    // Handle headings
+    text = text.replace(/^### (.*$)/gm, '<h3 class="text-lg font-bold mb-2">$1</h3>');
+    text = text.replace(/^## (.*$)/gm, '<h2 class="text-xl font-bold mb-3">$1</h2>');
+    text = text.replace(/^# (.*$)/gm, '<h1 class="text-2xl font-bold mb-4">$1</h1>');
+    
+    // Handle bold and italic
+    text = text.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold">$1</strong>');
+    text = text.replace(/\*(.*?)\*/g, '<em class="italic">$1</em>');
+    
+    // Handle lists
+    text = text.replace(/^\d+\. (.*$)/gm, '<li class="mb-2">$1</li>');
+    text = text.replace(/^- (.*$)/gm, '<li class="mb-2">$1</li>');
+    text = text.replace(/(<li class="mb-2">.*<\/li>\n?)+/g, '<ul class="list-disc pl-6 mb-4">$&</ul>');
+    
+    // Handle paragraphs
+    text = text.replace(/^(?!<[h|u|o])(.*$)/gm, '<p class="mb-4 leading-relaxed">$1</p>');
+    
+    // Clean up empty paragraphs
+    text = text.replace(/<p class="mb-4 leading-relaxed"><\/p>/g, '');
+    
+    return text;
+  };
+
   const renderAIMessage = (message: Message) => {
     const parsedResponse = parseAIResponse(message.content);
 
@@ -415,7 +443,10 @@ const ChatArea = ({ messages, isLoading, onToggleStar, onPlayMessage, currentlyP
                 </motion.div>
               </div>
               <div className="flex-1">
-                <p className="leading-relaxed">{parsedResponse.response}</p>
+                <div 
+                  className="prose prose-sm dark:prose-invert max-w-none"
+                  dangerouslySetInnerHTML={{ __html: parseMarkdown(parsedResponse.response) }}
+                />
               </div>
             </div>
           </div>
@@ -544,7 +575,10 @@ const ChatArea = ({ messages, isLoading, onToggleStar, onPlayMessage, currentlyP
             </motion.div>
           </div>
           <div className="flex-1">
-            <p className="leading-relaxed whitespace-pre-wrap">{message.content}</p>
+            <div 
+              className="prose prose-sm dark:prose-invert max-w-none"
+              dangerouslySetInnerHTML={{ __html: parseMarkdown(message.content) }}
+            />
           </div>
         </div>
       </div>

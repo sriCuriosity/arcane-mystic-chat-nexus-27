@@ -74,6 +74,13 @@ const DomainSelector: React.FC = () => {
     status: 'Initializing Domain Matrix...'
   });
 
+  // Add FPS calculation variables
+  const fpsRef = useRef({
+    frameCount: 0,
+    lastTime: performance.now(),
+    fps: 0
+  });
+
   // Check if mobile device
   useEffect(() => {
     const checkMobile = () => {
@@ -91,8 +98,8 @@ const DomainSelector: React.FC = () => {
 
     // Scene setup with enhanced atmosphere
     const scene = new THREE.Scene();
-    scene.fog = new THREE.Fog(0x000515, 18, 85);
-    scene.background = new THREE.Color(0x000208);
+    scene.fog = new THREE.Fog(0x2a0a3f, 18, 85); // Darker violet fog
+    scene.background = new THREE.Color(0x1a0a2a); // Dark violet background
     sceneRef.current = scene;
 
     // Camera setup
@@ -171,11 +178,11 @@ const DomainSelector: React.FC = () => {
 
   const createLightingSystem = (scene: THREE.Scene) => {
     // Ambient light
-    const ambientLight = new THREE.AmbientLight(0x0f0f3f, 0.4);
+    const ambientLight = new THREE.AmbientLight(0x581c87, 0.4); // Base violet ambient light
     scene.add(ambientLight);
 
     // Central core light
-    const coreLight = new THREE.PointLight(0x00ddff, 2.5, 70);
+    const coreLight = new THREE.PointLight(0x581c87, 2.5, 70); // Base violet core light
     coreLight.position.set(0, 0, 0);
     if (!isMobile) {
       coreLight.castShadow = true;
@@ -189,7 +196,8 @@ const DomainSelector: React.FC = () => {
       { color: 0xff4488, pos: [14, 9, 0] }, // Fun/Creative - Pink
       { color: 0x44ff88, pos: [-14, 9, 0] }, // Finance - Green
       { color: 0x4488ff, pos: [0, 9, 14] }, // Health - Blue
-      { color: 0xffaa44, pos: [0, 9, -14] } // Research - Orange
+      { color: 0xffaa44, pos: [0, 9, -14] }, // Research - Orange
+      { color: 0xff66cc, pos: [13, 9, -13] } // Casual - Pink
     ];
 
     domainLights.forEach(light => {
@@ -199,7 +207,7 @@ const DomainSelector: React.FC = () => {
     });
 
     // Rim lighting for depth
-    const rimLight = new THREE.DirectionalLight(0x0099ff, 0.6);
+    const rimLight = new THREE.DirectionalLight(0x581c87, 0.6); // Base violet rim light
     rimLight.position.set(60, 60, 60);
     scene.add(rimLight);
   };
@@ -210,13 +218,13 @@ const DomainSelector: React.FC = () => {
     // Main educational platform core
     const coreGeometry = new THREE.DodecahedronGeometry(2.8, 1);
     const coreMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0x00ddff,
+      color: 0x8a2be2, // Brighter violet for better visibility
       transparent: true,
-      opacity: 0.85,
-      roughness: 0.1,
-      metalness: 0.95,
-      emissive: 0x003344,
-      emissiveIntensity: 0.6
+      opacity: 0.9, // Increased opacity
+      roughness: 0.2, // Increased roughness for better light reflection
+      metalness: 0.8,
+      emissive: 0x4b0082, // Brighter emissive color
+      emissiveIntensity: 0.8 // Increased emissive intensity
     });
     const coreMesh = new THREE.Mesh(coreGeometry, coreMaterial);
     coreGroup.add(coreMesh);
@@ -224,9 +232,9 @@ const DomainSelector: React.FC = () => {
     // Inner knowledge core
     const innerGeometry = new THREE.SphereGeometry(2.2, 32, 32);
     const innerMaterial = new THREE.MeshBasicMaterial({
-      color: 0x0099ff,
+      color: 0x9370db, // Brighter violet for inner core
       transparent: true,
-      opacity: 0.7,
+      opacity: 0.8, // Increased opacity
       blending: THREE.AdditiveBlending
     });
     const innerMesh = new THREE.Mesh(innerGeometry, innerMaterial);
@@ -236,9 +244,9 @@ const DomainSelector: React.FC = () => {
     for (let i = 0; i < 4; i++) {
       const pulseGeometry = new THREE.TorusGeometry(3.5 + i * 0.9, 0.12, 8, 32);
       const pulseMaterial = new THREE.MeshBasicMaterial({
-        color: new THREE.Color().setHSL(0.55 + i * 0.08, 1, 0.6),
+        color: new THREE.Color().setHSL(0.75 + i * 0.08, 0.9, 0.7), // Increased saturation and lightness
         transparent: true,
-        opacity: 0.5,
+        opacity: 0.6, // Increased opacity
         blending: THREE.AdditiveBlending
       });
       const pulseMesh = new THREE.Mesh(pulseGeometry, pulseMaterial);
@@ -263,7 +271,7 @@ const DomainSelector: React.FC = () => {
       positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
       positions[i * 3 + 2] = r * Math.cos(phi);
 
-      const color = new THREE.Color().setHSL(Math.random() * 0.4 + 0.4, 1, 0.75);
+      const color = new THREE.Color().setHSL(Math.random() * 0.2 + 0.7, 0.9, 0.8); // Brighter particles
       colors[i * 3] = color.r;
       colors[i * 3 + 1] = color.g;
       colors[i * 3 + 2] = color.b;
@@ -273,9 +281,9 @@ const DomainSelector: React.FC = () => {
     particleGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     
     const particleMaterial = new THREE.PointsMaterial({
-      size: isMobile ? 0.18 : 0.25,
+      size: isMobile ? 0.25 : 0.35, // Increased particle size
       transparent: true,
-      opacity: 0.9,
+      opacity: 0.95, // Increased opacity
       vertexColors: true,
       blending: THREE.AdditiveBlending
     });
@@ -336,8 +344,32 @@ const DomainSelector: React.FC = () => {
         startPos: new THREE.Vector3(0, 0, 0),
         endPos: new THREE.Vector3(0, 7, -13),
         particleCount: isMobile ? 35 : 65
+      },
+      {
+        id: 'casual',
+        color: '#ff66cc',
+        glowColor: '#ff99dd',
+        label: 'Casual',
+        description: '🎮 Relaxed learning, fun activities, and casual entertainment. Enjoy the journey!',
+        icon: <Zap className="w-5 h-5" />,
+        emoji: '🎮',
+        startPos: new THREE.Vector3(0, 0, 0),
+        endPos: new THREE.Vector3(13, 7, -13),
+        particleCount: isMobile ? 35 : 65
       }
     ];
+
+    // Calculate positions for equal spacing (72 degrees between each domain)
+    const radius = 13; // Keep the same radius as before
+    const height = 7;  // Keep the same height as before
+    domains.forEach((domain, index) => {
+      const angle = (index * 72 * Math.PI) / 180; // Convert degrees to radians
+      domain.endPos = new THREE.Vector3(
+        radius * Math.cos(angle),
+        height,
+        radius * Math.sin(angle)
+      );
+    });
 
     domains.forEach((domain, index) => {
       // Enhanced curved paths with more organic feel
@@ -463,7 +495,7 @@ const DomainSelector: React.FC = () => {
       starPositions[i * 3 + 1] = (Math.random() - 0.5) * 350;
       starPositions[i * 3 + 2] = (Math.random() - 0.5) * 350;
 
-      const color = new THREE.Color().setHSL(Math.random() * 0.4 + 0.4, 0.9, Math.random() * 0.6 + 0.4);
+      const color = new THREE.Color().setHSL(0.75, 0.8, Math.random() * 0.6 + 0.4); // Violet to purple stars
       starColors[i * 3] = color.r;
       starColors[i * 3 + 1] = color.g;
       starColors[i * 3 + 2] = color.b;
@@ -486,7 +518,7 @@ const DomainSelector: React.FC = () => {
     // Educational platform grid
     const gridSize = 70;
     const gridDivisions = 35;
-    const gridHelper = new THREE.GridHelper(gridSize, gridDivisions, 0x0066aa, 0x003355);
+    const gridHelper = new THREE.GridHelper(gridSize, gridDivisions, 0x581c87, 0x2a0a3f); // Base violet grid
     gridHelper.position.y = -18;
     gridHelper.material.transparent = true;
     gridHelper.material.opacity = 0.35;
@@ -507,7 +539,7 @@ const DomainSelector: React.FC = () => {
       fieldPositions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta) - 6;
       fieldPositions[i * 3 + 2] = r * Math.cos(phi);
 
-      const color = new THREE.Color().setHSL(0.55, 1, Math.random() * 0.6 + 0.4);
+      const color = new THREE.Color().setHSL(0.75, 0.8, Math.random() * 0.6 + 0.4); // Violet energy field
       fieldColors[i * 3] = color.r;
       fieldColors[i * 3 + 1] = color.g;
       fieldColors[i * 3 + 2] = color.b;
@@ -730,14 +762,19 @@ const DomainSelector: React.FC = () => {
     const time = Date.now() * 0.001;
     frameCountRef.current++;
 
-    // Calculate FPS
-    if (time - lastTimeRef.current >= 1) {
+    // Calculate FPS using performance.now() for more accurate timing
+    const currentTime = performance.now();
+    fpsRef.current.frameCount++;
+
+    if (currentTime - fpsRef.current.lastTime >= 1000) {
+      fpsRef.current.fps = Math.round((fpsRef.current.frameCount * 1000) / (currentTime - fpsRef.current.lastTime));
+      fpsRef.current.frameCount = 0;
+      fpsRef.current.lastTime = currentTime;
+
       setStats(prev => ({
         ...prev,
-        fps: Math.round(frameCountRef.current / (time - lastTimeRef.current))
+        fps: fpsRef.current.fps
       }));
-      frameCountRef.current = 0;
-      lastTimeRef.current = time;
     }
 
     // Update camera controls with smooth interpolation
@@ -976,73 +1013,29 @@ const DomainSelector: React.FC = () => {
 
       {/* Performance Stats */}
       <div className="absolute top-4 right-4 z-10 text-white">
-        <div className="bg-black bg-opacity-40 backdrop-blur-sm border border-green-500 border-opacity-30 rounded-lg p-3 shadow-2xl">
+        <div className="bg-black bg-opacity-40 backdrop-blur-sm border border-cyan-500 border-opacity-30 rounded-lg p-3 shadow-2xl">
           <div className="flex items-center space-x-2 mb-2">
-            <Cpu className="w-4 h-4 text-green-400" />
-            <span className="text-sm font-mono text-green-400">SYSTEM STATUS</span>
+            <Cpu className="w-4 h-4 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400" />
+            <span className="text-sm font-mono text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400">SYSTEM STATUS</span>
           </div>
           <div className="text-xs font-mono space-y-1">
             <div className="flex justify-between">
               <span className="text-gray-300">FPS:</span>
-              <span className={`${stats.fps > 45 ? 'text-green-400' : stats.fps > 25 ? 'text-yellow-400' : 'text-red-400'}`}>
+              <span className={`${stats.fps > 45 ? 'text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400' : stats.fps > 25 ? 'text-yellow-400' : 'text-red-400'}`}>
                 {stats.fps}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-300">Domains:</span>
-              <span className="text-cyan-400">{stats.domains}</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400">{stats.domains}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-300">Particles:</span>
-              <span className="text-purple-400">{stats.particles}</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400">{stats.particles}</span>
             </div>
             <div className="text-xs mt-2 pt-2 border-t border-gray-600">
-              <span className="text-green-400">{stats.status}</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400">{stats.status}</span>
             </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Domain Labels */}
-      <div className="absolute bottom-4 left-4 z-10 text-white">
-        <div className="bg-black bg-opacity-40 backdrop-blur-sm border border-blue-500 border-opacity-30 rounded-lg p-4 shadow-2xl">
-          <div className="text-sm font-mono text-blue-400 mb-3 uppercase tracking-wide">Learning Domains</div>
-          <div className="space-y-3">
-            {domainsRef.current.map((domain) => (
-              <div 
-                key={domain.id} 
-                className={`flex items-center space-x-3 group cursor-pointer transition-all duration-300 ${
-                  selectedDomain === domain.id ? 'scale-105 bg-white bg-opacity-10 rounded-lg p-2 -m-2' : ''
-                }`}
-                onClick={() => {
-                  setSelectedDomain(domain.id);
-                  console.log(`Selected domain: ${domain.id} - ${domain.label}`);
-                  toast.success(`🎯 Selected: ${domain.label}`, {
-                    description: domain.description.replace(/^.{2}\s/, ''),
-                    duration: 3000,
-                  });
-                }}
-              >
-                <div 
-                  className={`w-3 h-3 rounded-full shadow-lg transition-all duration-300 ${
-                    selectedDomain === domain.id ? 'scale-125 shadow-2xl' : 'group-hover:scale-125 group-hover:shadow-glow'
-                  }`}
-                  style={{ 
-                    backgroundColor: domain.color,
-                    boxShadow: `0 0 ${selectedDomain === domain.id ? '15px' : '10px'} ${domain.color}40`
-                  }}
-                ></div>
-                <div className="flex items-center space-x-2">
-                  {domain.icon}
-                  <span className={`text-sm font-mono transition-colors ${
-                    selectedDomain === domain.id ? 'text-cyan-300 font-bold' : 'group-hover:text-cyan-300'
-                  }`}>
-                    {domain.label}
-                  </span>
-                  <span className="text-lg">{domain.emoji}</span>
-                </div>
-              </div>
-            ))}
           </div>
         </div>
       </div>

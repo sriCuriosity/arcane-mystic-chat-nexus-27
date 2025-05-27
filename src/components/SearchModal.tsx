@@ -117,7 +117,7 @@ const SearchModal = ({
               <TabsTrigger value="starred">Starred Messages</TabsTrigger>
             </TabsList>
           </div>
-
+          
           {/* Search Tab Content */}
           <TabsContent value="search" className="h-[calc(100%-3rem)]">
             <Command className="h-full">
@@ -129,9 +129,9 @@ const SearchModal = ({
               <CommandList className="max-h-[calc(100%-3.5rem)] overflow-y-auto">
                 <CommandEmpty>No messages found.</CommandEmpty>
                 {searchQuery !== "" && (
-                  <CommandGroup>
-                    {filteredMessages.map(renderMessageItem)}
-                  </CommandGroup>
+                <CommandGroup>
+                  {filteredMessages.map(renderMessageItem)}
+                </CommandGroup>
                 )}
               </CommandList>
             </Command>
@@ -148,13 +148,13 @@ const SearchModal = ({
               <CommandList className="max-h-[calc(100%-3.5rem)] overflow-y-auto">
                 <CommandEmpty>No starred messages found.</CommandEmpty>
                 {searchQuery !== "" && (
-                  <CommandGroup>
-                    {starredMessages
-                      .filter((message) =>
-                        message.content.toLowerCase().includes(searchQuery.toLowerCase())
-                      )
-                      .map(renderMessageItem)}
-                  </CommandGroup>
+                <CommandGroup>
+                  {starredMessages
+                    .filter((message) =>
+                      message.content.toLowerCase().includes(searchQuery.toLowerCase())
+                    )
+                    .map(renderMessageItem)}
+                </CommandGroup>
                 )}
               </CommandList>
             </Command>
