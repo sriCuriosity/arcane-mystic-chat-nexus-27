@@ -22,12 +22,12 @@ export default function ChatPage() {
   } = useChatLogic();
 
   // Auto-reload once on first mount if not already reloaded
-  useEffect(() => {
+  /*useEffect(() => {
     if (!window.location.hash.includes("#reloaded")) {
       window.location.hash = "#reloaded";
       window.location.reload();
     }
-  }, []);
+  }, []);*/
 
   // Clean up the hash after reload
   useEffect(() => {
