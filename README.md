@@ -8,39 +8,80 @@
 
 ---
 
-## What the Application Does
+## Newly Added Features
 
-- Processes user inputs to understand intent and provide relevant responses.
-- Supports real-time chat interactions with dynamic UI updates.
-- Integrates advanced intent recognition APIs for accurate conversation flow.
-- Provides a scalable architecture separating backend logic and frontend presentation.
+1. 🎯 **Immersive Domain Selector UI**  
+   Visual selection of 4 domains:  
+   🧠 Deep Research  
+   💰 Finance  
+   🧘‍♀️ Health  
+   🎨 Fun/Creative  
+   Interactive UI with node-style selector.
+
+New in our Project: Most AI tools don't offer domain entry via immersive visual navigation.
+
+2. 🧠 **Smart Filters by Intention**  
+   Custom intent filters like:  
+   🔍 “2 Mark Answers”  
+   📝 “Exam Prep”  
+   🎨 “Creative”  
+   👨‍💻 “Code Help”  
+   Users can add new filters dynamically.
+
+New in our Project: Perplexity Sonar does not support custom user-defined filters or intent refinement like this.
+
+3. 🧍‍♂️ **Multiple Personas**  
+   AI personas include:  
+   🕵️ Detective (for logic-based help)  
+   👩‍🏫 Teacher (for educational support)  
+   🎭 Funny/Friendly  
+   🎤 Motivator  
+   🎓 Professional (Career-focused)  
+   🧠 Psychologist  
+   ✨ Poetic
+
+New in our Project: Each persona has a unique style, purpose, and emotional tone. No existing AI assistant supports this level of customization.
+
+4.  **Personas by Age Group 👶👦🧑👴**  
+    Tailored conversations for:  
+    Kids  
+    Teens  
+    Adults  
+    Seniors
+
+New in our Project: Age-specific tone, vocabulary, and support based on user maturity — a first-of-its-kind feature.
+
+5. 🖼️ **Library Modal for Image Access**  
+   Built-in modal window to browse images visually.  
+   Helps in storytelling, concept learning, and media-rich tasks.
+
+New in our Project: Enhances multimedia learning; missing in Perplexity or standard chat UIs.
+
+6. 🔊 **Text-to-Voice with Character Voices**  
+   Each persona speaks with a unique voice.  
+   Adds human-like emotion and personality to interactions.
+
+New in our Project: Goes beyond generic TTS; emotional, character-driven vocal output.
+
+7. 🌙🌞 **Dark / Light Theme Support**  
+   UI theme switcher based on mood or time of day.  
+   Improves user comfort and accessibility.
+
+New in our Project: Most AI tools are locked in a single theme; this adds user control and aesthetic appeal.
 
 ---
 
 ## Why These Technologies Were Used
 
-- **Python (Backend):** Chosen for its rich ecosystem in AI and natural language processing, ease of building RESTful APIs, and rapid development capabilities.
-- **React + TypeScript (Frontend):** Provides a robust, type-safe environment for building interactive user interfaces with reusable components and excellent developer tooling.
-- **Vite:** A fast frontend build tool that enhances development experience with instant server start and lightning-fast hot module replacement.
-- **Tailwind CSS:** Enables rapid and consistent styling with utility-first CSS classes, ensuring a modern and responsive design.
-- **Modular Architecture:** Separates concerns between backend and frontend, improving maintainability and scalability.
+- **Python (Backend):** Selected for its extensive libraries and frameworks supporting AI and natural language processing, enabling efficient development of backend APIs.
+- **Flask (or similar Python framework):** Facilitates building lightweight and scalable RESTful APIs for handling chatbot logic.
+- **React + TypeScript (Frontend):** Offers a powerful, type-safe environment to build dynamic, reusable UI components with excellent developer tooling and maintainability.
+- **Vite:** Chosen for its fast build times and hot module replacement, improving frontend development speed and experience.
+- **Tailwind CSS:** Provides utility-first CSS for rapid, consistent, and responsive styling, allowing for a modern and visually appealing UI.
+- **Node.js and npm:** Used for managing frontend dependencies and scripts, ensuring smooth build and deployment processes.
+- **Modular Architecture:** Ensures clear separation of concerns between backend and frontend, enhancing scalability, maintainability, and ease of collaboration.
 
----
-
-##New features added
-
----
-
-## Features
-
-- Real-time chat interface with smooth user experience.
-- Intent recognition and processing via backend APIs.
-- Responsive design compatible with desktop and mobile devices.
-- Modular and extensible codebase for easy feature additions.
-- Comprehensive type safety with TypeScript.
-- Static asset management for optimized loading.
-
----
+## --
 
 ## Project Structure
 
@@ -180,16 +221,7 @@ npm run build
 - Tailwind CSS is configured for utility-first styling; customize `tailwind.config.ts` as needed.
 
 - The project uses TypeScript for type safety and better developer experience.
-
----
-
-## Contact and Contribution
-
-Feel free to open issues or submit pull requests for improvements or bug fixes.
-
----
-
-## Visual Preview
+--
 
 !
 
