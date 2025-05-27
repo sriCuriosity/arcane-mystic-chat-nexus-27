@@ -203,7 +203,7 @@ const ChatArea = ({ messages, isLoading, onToggleStar, onPlayMessage, currentlyP
       });
 
       const imageData = canvas.toDataURL('image/png', 0.95);
-
+      
       // Save to library
       const savedImages = JSON.parse(localStorage.getItem('savedImages') || '[]');
       const newImage = {
@@ -279,11 +279,11 @@ const ChatArea = ({ messages, isLoading, onToggleStar, onPlayMessage, currentlyP
         </body>
         </html>
       `;
-  
+
       iframe.contentDocument?.open();
       iframe.contentDocument?.write(enhancedHtml);
       iframe.contentDocument?.close();
-  
+
       // Wait for full content load
       await new Promise(resolve => {
         const checkLoaded = () => {
@@ -371,7 +371,7 @@ const ChatArea = ({ messages, isLoading, onToggleStar, onPlayMessage, currentlyP
       }
   
       pdf.save(`study-tool-${Date.now()}.pdf`);
-  
+
       document.body.removeChild(iframe);
       
       toast.success("Study tool downloaded as PDF!", { duration: 3000 });
@@ -434,13 +434,7 @@ const ChatArea = ({ messages, isLoading, onToggleStar, onPlayMessage, currentlyP
           )}>
             <div className="flex items-start gap-3 mb-3">
               <div className={cn("p-2 rounded-lg", isDarkMode ? "bg-slate-600" : "bg-blue-100")}>
-                <motion.div 
-                  layoutId="star-transition"
-                  className={cn("p-2 rounded-lg", isDarkMode ? "bg-slate-600" : "bg-indigo-100")}
-                  transition={{ duration: 0.5, ease: "easeInOut" }}
-                >
-                  <Sparkles size={16} className={isDarkMode ? "text-indigo-400" : "text-indigo-600"} />
-                </motion.div>
+                <Sparkles size={16} className={isDarkMode ? "text-indigo-400" : "text-indigo-600"} />
               </div>
               <div className="flex-1">
                 <div 
@@ -482,47 +476,47 @@ const ChatArea = ({ messages, isLoading, onToggleStar, onPlayMessage, currentlyP
                       {copiedCodeId === message.id ? "Code copied!" : "Copy HTML code"}
                     </TooltipContent>
                   </Tooltip>
-
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        disabled={downloadingId === message.id}
-                        className={cn("hover:bg-slate-50", isDarkMode && "bg-slate-600 text-slate-100 border-slate-500 hover:bg-slate-500")}
-                      >
-                        {downloadingId === message.id ? (
-                          <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600 mr-2"></div>
-                            Downloading...
-                          </>
-                        ) : (
-                          <>
-                            <Download size={14} className="mr-2" />
-                            Download
-                          </>
-                        )}
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className={isDarkMode ? "bg-slate-700 border-slate-600 text-slate-200" : ""}>
-                      <DropdownMenuItem 
-                        onClick={() => downloadAsImage(parsedResponse.code!, message.id)}
-                        disabled={downloadingId === message.id}
-                        className={isDarkMode ? "hover:bg-slate-600" : ""}
-                      >
-                        <Image size={14} className="mr-2" />
-                        Download as PNG
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        onClick={() => downloadAsPDF(parsedResponse.code!, message.id)}
-                        disabled={downloadingId === message.id}
-                        className={isDarkMode ? "hover:bg-slate-600" : ""}
-                      >
-                        <FileText size={14} className="mr-2" />
-                        Download as PDF
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      disabled={downloadingId === message.id}
+                      className={cn("hover:bg-slate-50", isDarkMode && "bg-slate-600 text-slate-100 border-slate-500 hover:bg-slate-500")}
+                    >
+                      {downloadingId === message.id ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600 mr-2"></div>
+                          Downloading...
+                        </>
+                      ) : (
+                        <>
+                          <Download size={14} className="mr-2" />
+                          Download
+                        </>
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className={isDarkMode ? "bg-slate-700 border-slate-600 text-slate-200" : ""}>
+                    <DropdownMenuItem 
+                      onClick={() => downloadAsImage(parsedResponse.code!, message.id)}
+                      disabled={downloadingId === message.id}
+                      className={isDarkMode ? "hover:bg-slate-600" : ""}
+                    >
+                      <Image size={14} className="mr-2" />
+                      Download as PNG
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => downloadAsPDF(parsedResponse.code!, message.id)}
+                      disabled={downloadingId === message.id}
+                      className={isDarkMode ? "hover:bg-slate-600" : ""}
+                    >
+                      <FileText size={14} className="mr-2" />
+                      Download as PDF
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 </div>
               </div>
             </CardHeader>
@@ -566,13 +560,7 @@ const ChatArea = ({ messages, isLoading, onToggleStar, onPlayMessage, currentlyP
       )}>
         <div className="flex items-start gap-3">
           <div className={cn("p-2 rounded-lg flex-shrink-0", isDarkMode ? "bg-slate-600" : "bg-blue-100")}>
-            <motion.div 
-              layoutId="star-transition"
-              className={cn("p-2 rounded-lg", isDarkMode ? "bg-slate-600" : "bg-indigo-100")}
-              transition={{ duration: 0.5, ease: "easeInOut" }}
-            >
-              <Sparkles size={16} className={isDarkMode ? "text-indigo-400" : "text-indigo-600"} />
-            </motion.div>
+            <Sparkles size={16} className={isDarkMode ? "text-indigo-400" : "text-indigo-600"} />
           </div>
           <div className="flex-1">
             <div 
@@ -586,11 +574,8 @@ const ChatArea = ({ messages, isLoading, onToggleStar, onPlayMessage, currentlyP
   };
 
   return (
-    <motion.div 
+    <div 
       className={cn("flex-grow overflow-y-auto p-6 transition-colors duration-200", isDarkMode ? "bg-slate-900 text-slate-200" : "bg-gradient-to-br from-slate-50 via-white to-blue-50")}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: 0.1 }}
     >
       {messages.length === 0 ? (
         <div className="h-full flex flex-col items-center justify-center text-center">
@@ -735,7 +720,7 @@ const ChatArea = ({ messages, isLoading, onToggleStar, onPlayMessage, currentlyP
           <div ref={messagesEndRef} />
         </div>
       )}
-    </motion.div>
+    </div>
   );
 };
 

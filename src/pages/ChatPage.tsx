@@ -6,57 +6,51 @@ import ChatArea from "@/components/ChatArea";
 import MessageInput from "@/components/MessageInput";
 import { useChatLogic } from "@/hooks/useChatLogic";
 
-const ChatPage = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  
+export default function ChatPage() {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const {
     messages,
     isLoading,
-    currentlyPlaying,
     handleSendMessage,
     handleTextToSpeech,
     toggleStarMessage,
+    handleNewChat,
+    loadChat,
+    currentChatId,
     starredMessages,
   } = useChatLogic();
 
-  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
-
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex flex-col h-screen bg-background">
       <AppHeader 
-        onToggleSidebar={toggleSidebar} 
-        sidebarOpen={sidebarOpen} 
         messages={messages}
+        onLoadChat={loadChat}
+        currentChatId={currentChatId}
+        onNewChat={handleNewChat}
       />
-      <div className="flex flex-1 overflow-hidden">
-        <Sidebar 
-          isOpen={sidebarOpen}
-          toggleSidebar={toggleSidebar}
+      <div className="flex flex-row flex-1 overflow-hidden pt-20">
+        <Sidebar
+          isOpen={isSidebarOpen}
+          toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
           starredMessages={starredMessages}
           messages={messages}
           onToggleStar={toggleStarMessage}
-          onMessageClick={(messageId) => {
-            console.log("Message clicked:", messageId);
-          }}
+          onMessageClick={() => {}}
+          onNewChat={handleNewChat}
+          onLoadChat={loadChat}
+          currentChatId={currentChatId}
         />
-        <main className="flex flex-col flex-grow overflow-y-auto">
-          <ChatArea 
-            messages={messages} 
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <ChatArea
+            messages={messages}
             isLoading={isLoading}
             onToggleStar={toggleStarMessage}
-            onPlayMessage={handleTextToSpeech}
-            currentlyPlaying={currentlyPlaying}
+            onTextToSpeech={handleTextToSpeech}
+            className="flex-grow overflow-y-auto"
           />
-          <div className="flex flex-col min-w-0">
-            <MessageInput 
-              onSendMessage={handleSendMessage} 
-              disabled={isLoading} 
-            />
-          </div>
-        </main>
+          <MessageInput onSendMessage={handleSendMessage} isLoading={isLoading} />
+        </div>
       </div>
     </div>
   );
-};
-
-export default ChatPage;
+}
