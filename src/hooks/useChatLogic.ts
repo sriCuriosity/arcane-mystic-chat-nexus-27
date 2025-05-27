@@ -156,11 +156,52 @@ export const useChatLogic = () => {
    */
   const handleTextToSpeech = async (messageId: string, content: string) => {
     if (currentlyPlaying === messageId) {
+      // If currently playing this message, stop it
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
       setCurrentlyPlaying(null);
-      // Stop speech
     } else {
+      // If playing a different message, stop it first
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
       setCurrentlyPlaying(messageId);
-      // Start speech
+      if (!characterData) {
+        toast.error("Character data not loaded for text-to-speech.");
+        setCurrentlyPlaying(null);
+        return;
+      }
+      try {
+        toast.info("Converting text to speech...");
+        console.log("About to call convertToSpeech", { content, characterData });
+        const audioBlob = await ApiService.convertToSpeech({
+          text: content,
+          character: {
+            role: characterData.lifeStage.stage,
+            voiceId: characterData.voiceId,
+          }
+        });
+        const audioUrl = URL.createObjectURL(audioBlob);
+        audioRef.current = new Audio(audioUrl);
+        audioRef.current.play();
+        audioRef.current.onended = () => {
+          setCurrentlyPlaying(null);
+          URL.revokeObjectURL(audioUrl);
+        };
+        audioRef.current.onerror = (error) => {
+          console.error("Audio playback error:", error);
+          toast.error("Failed to play audio.");
+          setCurrentlyPlaying(null);
+          URL.revokeObjectURL(audioUrl);
+        };
+      } catch (error) {
+        console.error("Error during text-to-speech:", error);
+        toast.error(`Failed to generate speech: ${error instanceof Error ? error.message : ''}`);
+        setCurrentlyPlaying(null);
+      }
     }
   };
 

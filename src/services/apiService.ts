@@ -3,8 +3,7 @@ import axios from "axios";
 
 const SONAR_API_URL = "https://api.perplexity.ai/chat/completions";
 const SONAR_API_TOKEN = "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";
-const BACKEND_API_URL = "http://localhost:3000";
-const INTENT_API_URL = "http://localhost:8000";
+const INTENT_API_URL = "http://127.0.0.1:8000";
 
 export interface IntentResult {
   matched_intention: string | null;
@@ -76,7 +75,7 @@ export class ApiService {
    * Converts text to speech using the backend API
    */
   static async convertToSpeech(speechRequest: SpeechRequest): Promise<Blob> {
-    const response = await fetch(`${BACKEND_API_URL}/speak`, {
+    const response = await fetch(`${INTENT_API_URL}/speak`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

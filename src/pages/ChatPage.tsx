@@ -1,5 +1,5 @@
 // pages/ChatPage.tsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AppHeader from "@/components/AppHeader";
 import Sidebar from "@/components/Sidebar";
 import ChatArea from "@/components/ChatArea";
@@ -18,17 +18,33 @@ export default function ChatPage() {
     loadChat,
     currentChatId,
     starredMessages,
+    currentlyPlaying,
   } = useChatLogic();
 
+  // Auto-reload once on first mount if not already reloaded
+  useEffect(() => {
+    if (!window.location.hash.includes("#reloaded")) {
+      window.location.hash = "#reloaded";
+      window.location.reload();
+    }
+  }, []);
+
+  // Clean up the hash after reload
+  useEffect(() => {
+    if (window.location.hash === "#reloaded") {
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    }
+  }, []);
+
   return (
-    <div className="flex flex-col h-screen bg-background">
+    <div className="flex flex-col h-screen min-h-0 bg-background">
       <AppHeader 
         messages={messages}
         onLoadChat={loadChat}
         currentChatId={currentChatId}
         onNewChat={handleNewChat}
       />
-      <div className="flex flex-row flex-1 overflow-hidden pt-20">
+      <div className="flex flex-row flex-1 min-h-0 overflow-hidden pt-20">
         <Sidebar
           isOpen={isSidebarOpen}
           toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -37,18 +53,16 @@ export default function ChatPage() {
           onToggleStar={toggleStarMessage}
           onMessageClick={() => {}}
           onNewChat={handleNewChat}
-          onLoadChat={loadChat}
-          currentChatId={currentChatId}
         />
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden min-h-0">
           <ChatArea
             messages={messages}
             isLoading={isLoading}
             onToggleStar={toggleStarMessage}
-            onTextToSpeech={handleTextToSpeech}
-            className="flex-grow overflow-y-auto"
+            onPlayMessage={handleTextToSpeech}
+            currentlyPlaying={currentlyPlaying}
           />
-          <MessageInput onSendMessage={handleSendMessage} isLoading={isLoading} />
+          <MessageInput onSendMessage={handleSendMessage} />
         </div>
       </div>
     </div>
