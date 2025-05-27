@@ -7,7 +7,6 @@ import {
   Plus, 
   ChevronLeft, 
   ChevronRight, 
-  Search, 
   Filter, 
   Sparkles, 
   Star,
@@ -17,10 +16,9 @@ import {
   Palette,
   Code2,
   Lightbulb,
-  Menu
+  PlusCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import SearchModal from "./SearchModal";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -33,6 +31,7 @@ interface SidebarProps {
   messages: Message[];
   onToggleStar: (messageId: string) => void;
   onMessageClick: (messageId: string) => void;
+  onNewChat?: () => void;
 }
 
 const Sidebar = ({ 
@@ -41,7 +40,8 @@ const Sidebar = ({
   starredMessages,
   messages,
   onToggleStar,
-  onMessageClick
+  onMessageClick,
+  onNewChat
 }: SidebarProps) => {
   const [filterTags, setFilterTags] = useState<FilterTag[]>(() => {
     try {
@@ -63,7 +63,6 @@ const Sidebar = ({
 
   const [newFilterValue, setNewFilterValue] = useState("");
   const [isAddingFilter, setIsAddingFilter] = useState(false);
-  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   
   const [selectedModel, setSelectedModel] = useState(() => {
     try {
@@ -144,107 +143,59 @@ const Sidebar = ({
           isOpen ? "w-80" : "w-16"
         )}
       >
-        {/* Header */}
-        <div className={cn("p-3 border-b", isDarkMode ? "border-slate-700" : "border-slate-100", !isOpen && "px-2")}>
-          <div className="flex items-center justify-between">
-            {isOpen ? (
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl text-white flex items-center justify-center">
-                  <MessageSquare size={18} />
-                </div>
-                <div>
-                  <h1 className={cn("font-bold text-lg", isDarkMode ? "text-slate-100" : "text-slate-800")}>ChatAI</h1>
-                  <p className={cn("text-xs", isDarkMode ? "text-slate-400" : "text-slate-500")}>AI Assistant</p>
-                </div>
-              </div>
-            ) : (
-              <div className="w-full flex justify-center">
-                <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl text-white flex items-center justify-center">
-                  <MessageSquare size={18} />
-                </div>
-              </div>
-            )}
-            
+        {/* Header - New Chat Card and Toggle */}
+        <div className={cn("p-2 border-b flex items-center gap-2", isDarkMode ? "border-slate-700" : "border-slate-100", !isOpen && "px-2 justify-center")}>
+          {/* New Chat Card */}
+          {isOpen ? (
             <Button
-              variant="ghost"
-              size="icon"
-              className={cn("h-8 w-8", isDarkMode && "hover:bg-slate-800")}
-              onClick={toggleSidebar}
+              variant="outline"
+              className={cn(
+                "flex-1 flex items-center gap-2 h-9 px-3 text-sm font-medium border-dashed transition-all duration-200",
+                isDarkMode 
+                  ? "border-slate-600 text-slate-300 hover:border-slate-500 hover:bg-slate-800 hover:text-slate-200" 
+                  : "border-slate-300 text-slate-600 hover:border-slate-400 hover:bg-slate-50 hover:text-slate-700"
+              )}
+              onClick={onNewChat}
             >
-              {isOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+              <PlusCircle size={16} />
+              <span>New Chat</span>
             </Button>
-          </div>
-        </div>
-
-        {/* Quick Actions */}
-        <div className={cn("p-3 space-y-2", !isOpen && "px-2")}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size={isOpen ? "default" : "icon"}
-                className={cn(
-                  "w-full border-slate-200",
-                  isDarkMode ? "bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-200" : "bg-slate-50 hover:bg-slate-100",
-                  isOpen ? "justify-start gap-3" : "justify-center"
-                )}
-                onClick={() => setIsSearchModalOpen(true)}
-              >
-                <Search size={16} />
-                {isOpen && <span>Search Messages</span>}
-              </Button>
-            </TooltipTrigger>
-            {!isOpen && <TooltipContent side="right" className={isDarkMode ? "bg-slate-700 border-slate-600 text-slate-200" : ""}>Search Messages</TooltipContent>}
-          </Tooltip>
-        </div>
-
-        <div className={cn("px-3", !isOpen && "px-2")}>
-          <Separator className={isDarkMode ? "bg-slate-700" : ""} />
-        </div>
-
-        {/* AI Model Selector */}
-        <div className={cn("p-3", !isOpen && "px-2")}>
-          {isOpen && (
-            <div className="flex items-center gap-2 mb-3">
-              <currentModel.icon size={14} className={currentModel.color} />
-              <span className={cn("text-sm font-semibold", isDarkMode ? "text-slate-100" : "text-slate-700")}>AI Model</span>
-            </div>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className={cn(
+                    "h-8 w-8 border-dashed transition-all duration-200",
+                    isDarkMode 
+                      ? "border-slate-600 text-slate-300 hover:border-slate-500 hover:bg-slate-800" 
+                      : "border-slate-300 text-slate-600 hover:border-slate-400 hover:bg-slate-50"
+                  )}
+                  onClick={onNewChat}
+                >
+                  <PlusCircle size={16} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className={isDarkMode ? "bg-slate-700 border-slate-600 text-slate-200" : ""}>
+                New Chat
+              </TooltipContent>
+            </Tooltip>
           )}
-          
-          <div className="space-y-1">
-            {models.map((model) => (
-              <Tooltip key={model.name}>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant={selectedModel === model.name ? "default" : "ghost"}
-                    size={isOpen ? "sm" : "icon"}
-                    className={cn(
-                      "w-full transition-colors h-8",
-                      isOpen ? "justify-start gap-3" : "justify-center",
-                      selectedModel === model.name 
-                        ? (isDarkMode ? "bg-blue-700 text-white border-blue-600 hover:bg-blue-600" : "bg-blue-50 text-blue-700 border-blue-200")
-                        : (isDarkMode ? "hover:bg-slate-800 text-slate-200" : "")
-                    )}
-                    onClick={() => selectModel(model.name)}
-                  >
-                    <div className="flex items-center justify-center">
-                      <model.icon size={14} className={model.color} />
-                    </div>
-                    {isOpen && <span className="truncate text-xs">{model.name}</span>}
-                  </Button>
-                </TooltipTrigger>
-                {!isOpen && <TooltipContent side="right" className={isDarkMode ? "bg-slate-700 border-slate-600 text-slate-200" : ""}>{model.name}</TooltipContent>}
-              </Tooltip>
-            ))}
-          </div>
+
+          {/* Toggle Button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn("h-8 w-8 flex-shrink-0", isDarkMode && "hover:bg-slate-800")}
+            onClick={toggleSidebar}
+          >
+            {isOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+          </Button>
         </div>
 
-        <div className={cn("px-3", !isOpen && "px-2")}>
-          <Separator className={isDarkMode ? "bg-slate-700" : ""} />
-        </div>
-
-        {/* Filters Section */}
-        <div className={cn("flex-1 p-3 min-h-0 flex flex-col overflow-y-auto", !isOpen && "px-2")}>
+        {/* Filters Section - At the top with max 4 visible */}
+        <div className={cn("p-3", !isOpen && "px-2")}>
           <div className={cn("flex items-center justify-between mb-3", !isOpen && "justify-center")}>
             {isOpen ? (
               <span className={cn("text-sm font-semibold", isDarkMode ? "text-slate-100" : "text-slate-700")}>Smart Filters</span>
@@ -292,7 +243,7 @@ const Sidebar = ({
           )}
 
           {isOpen && (
-            <div className="space-y-1">
+            <div className={cn("space-y-1", filterTags.length > 4 ? "max-h-32 overflow-y-auto pr-2" : "")}>
               {filterTags.map((tag) => (
                 <div key={tag.id} className={cn("flex items-center justify-between p-2 rounded-md text-sm", isDarkMode ? "bg-slate-800 text-slate-200 border border-slate-700" : "bg-slate-100 text-slate-800 border border-slate-200")}>
                   <div className="flex items-center gap-2">
@@ -309,39 +260,105 @@ const Sidebar = ({
           )}
         </div>
 
-        <div className={cn("px-3 mt-auto", !isOpen && "px-2")}>
+        {/* Spacer to push content to bottom */}
+        <div className="flex-1"></div>
+
+        {/* AI Model Selector - Moved to bottom */}
+        <div className={cn("p-3", !isOpen && "px-2")}>
+          {isOpen && (
+            <div className="flex items-center gap-2 mb-3">
+              <currentModel.icon size={14} className={currentModel.color} />
+              <span className={cn("text-sm font-semibold", isDarkMode ? "text-slate-100" : "text-slate-700")}>AI Model</span>
+            </div>
+          )}
+          
+          <div className="space-y-1">
+            {models.map((model) => (
+              <Tooltip key={model.name}>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={selectedModel === model.name ? "default" : "ghost"}
+                    size={isOpen ? "sm" : "icon"}
+                    className={cn(
+                      "w-full transition-colors h-8",
+                      isOpen ? "justify-start gap-3" : "justify-center",
+                      selectedModel === model.name 
+                        ? (isDarkMode ? "bg-blue-700 text-white border-blue-600 hover:bg-blue-600" : "bg-blue-50 text-blue-700 border-blue-200")
+                        : (isDarkMode ? "hover:bg-slate-800 text-slate-200" : "")
+                    )}
+                    onClick={() => selectModel(model.name)}
+                  >
+                    <div className="flex items-center justify-center">
+                      <model.icon size={14} className={model.color} />
+                    </div>
+                    {isOpen && <span className="truncate text-xs">{model.name}</span>}
+                  </Button>
+                </TooltipTrigger>
+                {!isOpen && <TooltipContent side="right" className={isDarkMode ? "bg-slate-700 border-slate-600 text-slate-200" : ""}>{model.name}</TooltipContent>}
+              </Tooltip>
+            ))}
+          </div>
+        </div>
+
+        <div className={cn("px-3", !isOpen && "px-2")}>
            <Separator className={isDarkMode ? "bg-slate-700" : ""} />
         </div>
 
-        {/* Settings */}
+        {/* User Profile */}
         <div className={cn("p-3", !isOpen && "px-2")}>
-           {isOpen && (
-            <span className={cn("text-sm font-semibold mb-3 block", isDarkMode ? "text-slate-100" : "text-slate-700")}>Settings</span>
-           )}
-           <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size={isOpen ? "default" : "icon"}
-                 className={cn("w-full h-8", isOpen ? "justify-start gap-3" : "justify-center", isDarkMode && "hover:bg-slate-800 text-slate-200")}
+          {isOpen ? (
+            <div className="flex items-center gap-3">
+              <button 
+                className={cn(
+                  "w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm hover:from-blue-600 hover:to-purple-700 transition-colors",
+                )}
+                onClick={() => {/* Handle profile click */}}
               >
-                <Settings size={16} />
-                 {isOpen && <span>Settings</span>}
-              </Button>
-            </TooltipTrigger>
-            {!isOpen && <TooltipContent side="right" className={isDarkMode ? "bg-slate-700 border-slate-600 text-slate-200" : ""}>Settings</TooltipContent>}
-           </Tooltip>
+                JD
+              </button>
+              <div className="flex-1 min-w-0">
+                <div className={cn("text-sm font-medium truncate", isDarkMode ? "text-slate-100" : "text-slate-900")}>
+                  John Doe
+                </div>
+                <div className={cn("text-xs truncate", isDarkMode ? "text-slate-400" : "text-slate-500")}>
+                  john.doe@example.com
+                </div>
+              </div>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn("h-8 w-8 flex-shrink-0", isDarkMode && "hover:bg-slate-800 text-slate-200")}
+                    onClick={() => {/* Handle settings click */}}
+                  >
+                    <Settings size={16} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className={isDarkMode ? "bg-slate-700 border-slate-600 text-slate-200" : ""}>
+                  Settings
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button 
+                  className={cn(
+                    "w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm hover:from-blue-600 hover:to-purple-700 transition-colors mx-auto",
+                  )}
+                  onClick={() => {/* Handle profile click */}}
+                >
+                  JD
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className={isDarkMode ? "bg-slate-700 border-slate-600 text-slate-200" : ""}>
+                John Doe
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
       </div>
-
-      <SearchModal 
-        isOpen={isSearchModalOpen} 
-        onClose={() => setIsSearchModalOpen(false)} 
-        messages={messages}
-        starredMessages={starredMessages}
-        onToggleStar={onToggleStar}
-        onMessageClick={onMessageClick}
-      />
     </>
   );
 };
