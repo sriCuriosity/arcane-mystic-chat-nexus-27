@@ -1,20 +1,58 @@
-from fastapi import FastAPI
+# fastapi_app.py
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import List, Dict, Optional, Union
+import requests
+import io
+import os
+import time
+import pickle
+import warnings
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+from functools import lru_cache
+from dotenv import load_dotenv
 import numpy as np
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 import torch
 from collections import defaultdict
 import re
-import asyncio
-from concurrent.futures import ThreadPoolExecutor
-import time
-from functools import lru_cache
-import pickle
-import os
 
+# Define Pydantic models for request/response types
+class IntentRequest(BaseModel):
+    prompt: str
+    threshold: float = 0.5
+
+class ToolRecommendation(BaseModel):
+    name: str
+    description: str
+    confidence: float
+
+class AlternativeIntention(BaseModel):
+    intention: str
+    score: float
+
+class IntentResponse(BaseModel):
+    matched_intention: Optional[str]
+    confidence: float
+    recommended_tools: List[ToolRecommendation]
+    is_fallback: bool
+    alternative_intentions: List[AlternativeIntention]
+
+class TTSRequest(BaseModel):
+    text: str
+    character: Dict[str, str]
+
+# Suppress FutureWarning from huggingface_hub
+warnings.filterwarnings("ignore", category=FutureWarning)
+
+# Load environment variables
+load_dotenv()
+
+# Initialize FastAPI app
 app = FastAPI()
 
 # Add CORS middleware
@@ -36,6 +74,14 @@ similarity_cache = {}
 
 # Thread pool for CPU-intensive tasks
 executor = ThreadPoolExecutor(max_workers=4)
+
+# Voice mappings for different roles
+VOICE_MAPPING = {
+    'child': '21m00Tcm4TlvDq8ikWAM',
+    'teen': 'AZnzlk1XvdvUeBnXmlld',
+    'adult': 'EXAVITQu4vr4xnSDxMaL',
+    'senior': 'MF3mGyEYCl7XYWbV9V6O'
+}
 
 # Enhanced intention database (same as before but optimized structure)
 intention_data = [
@@ -395,26 +441,6 @@ SCORING_WEIGHTS = {
     'length_penalty': 0.1
 }
 
-class IntentRequest(BaseModel):
-    prompt: str
-    threshold: Optional[float] = 0.25
-
-class ToolRecommendation(BaseModel):
-    name: str
-    description: str
-    confidence: float
-
-class AlternativeIntention(BaseModel):
-    intention: str
-    score: float
-
-class IntentResponse(BaseModel):
-    matched_intention: Optional[str]
-    confidence: Optional[float]
-    recommended_tools: List[ToolRecommendation]
-    is_fallback: bool
-    alternative_intentions: List[AlternativeIntention]
-
 # Optimized text preprocessing with caching
 @lru_cache(maxsize=1000)
 def preprocess_text_cached(text: str) -> str:
@@ -443,44 +469,51 @@ def extract_keywords_cached(text: str) -> tuple:
     keywords = tuple(word for word in words if word not in stop_words and len(word) > 2)
     return keywords
 
-def load_or_compute_embeddings():
+async def load_or_compute_embeddings():
     """Load precomputed embeddings or compute them if not available"""
     global model, intention_embeddings, intention_texts, tools_mapping
     
     embeddings_file = "intention_embeddings.pkl"
     
-    if os.path.exists(embeddings_file):
-        print("Loading precomputed embeddings...")
-        with open(embeddings_file, 'rb') as f:
-            data = pickle.load(f)
-            intention_embeddings = data['embeddings']
-            intention_texts = data['texts']
-            tools_mapping = data['tools']
-    else:
-        print("Computing embeddings for the first time...")
-        # Load model only once
-        model = SentenceTransformer('all-mpnet-base-v2')
+    try:
+        if os.path.exists(embeddings_file):
+            print("Loading precomputed embeddings...")
+            with open(embeddings_file, 'rb') as f:
+                data = pickle.load(f)
+                intention_embeddings = data['embeddings']
+                intention_texts = data['texts']
+                tools_mapping = data['tools']
+        else:
+            print("Computing embeddings for the first time...")
+            # Load model only once with latest recommended settings
+            model = SentenceTransformer('all-mpnet-base-v2', device='cuda' if torch.cuda.is_available() else 'cpu')
+            
+            # Prepare data
+            intention_texts = [item["intention"] for item in intention_data]
+            tools_mapping = {item["intention"]: item["tools"] for item in intention_data}
+            
+            # Compute embeddings in batch (much faster)
+            intention_embeddings = model.encode(intention_texts, convert_to_tensor=True, show_progress_bar=True)
+            
+            # Save for future use
+            with open(embeddings_file, 'wb') as f:
+                pickle.dump({
+                    'embeddings': intention_embeddings,
+                    'texts': intention_texts,
+                    'tools': tools_mapping
+                }, f)
         
-        # Prepare data
-        intention_texts = [item["intention"] for item in intention_data]
-        tools_mapping = {item["intention"]: item["tools"] for item in intention_data}
+        # Load model for query encoding if not already loaded
+        if model is None:
+            model = SentenceTransformer('all-mpnet-base-v2', device='cuda' if torch.cuda.is_available() else 'cpu')
         
-        # Compute embeddings in batch (much faster)
-        intention_embeddings = model.encode(intention_texts, convert_to_tensor=True, show_progress_bar=True)
-        
-        # Save for future use
-        with open(embeddings_file, 'wb') as f:
-            pickle.dump({
-                'embeddings': intention_embeddings,
-                'texts': intention_texts,
-                'tools': tools_mapping
-            }, f)
-    
-    # Load model for query encoding if not already loaded
-    if model is None:
-        model = SentenceTransformer('all-mpnet-base-v2')
-    
-    print(f"Loaded {len(intention_texts)} intentions with precomputed embeddings")
+        print(f"Loaded {len(intention_texts)} intentions with precomputed embeddings")
+    except Exception as e:
+        print(f"Error loading or computing embeddings: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to initialize the model and embeddings"
+        )
 
 async def compute_similarity_batch(query_embedding: torch.Tensor) -> np.ndarray:
     """Compute similarities in batch for better performance"""
@@ -643,7 +676,14 @@ def enhanced_classify_general_intent(query: str) -> Dict:
 @app.on_event("startup")
 async def startup_event():
     """Initialize embeddings on startup"""
-    load_or_compute_embeddings()
+    try:
+        await load_or_compute_embeddings()
+    except Exception as e:
+        print(f"Failed to initialize on startup: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to initialize the application"
+        )
 
 @app.post("/classify-intent", response_model=IntentResponse)
 async def classify_intent(request: IntentRequest):
@@ -785,8 +825,7 @@ tools_database = {
 
 @app.get("/")
 async def root():
-    #return {"message": "Optimized Intent Classification API is running!"}
-    return 
+    return {"message": "Optimized Intent Classification API is running!"}
 
 @app.get("/health")
 async def health_check():
@@ -796,6 +835,55 @@ async def health_check():
         "intentions_loaded": len(intention_texts) if intention_texts else 0
     }
 
+@app.post("/speak")
+async def text_to_speech(request: TTSRequest):
+    """Handle TTS requests"""
+    try:
+        API_KEY = os.getenv('ELEVENLABS_API_KEY')
+        if not API_KEY:
+            raise HTTPException(status_code=500, detail="ELEVENLABS_API_KEY not found in environment variables")
+
+        # Get voice ID
+        voice_id = request.character.get('voiceId')
+        if not voice_id and request.character.get('role'):
+            role = request.character['role'].lower()
+            voice_id = VOICE_MAPPING.get(role)
+
+        if not voice_id:
+            raise HTTPException(status_code=400, detail="No valid voice ID found")
+
+        # Call ElevenLabs API
+        response = requests.post(
+            f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}",
+            headers={
+                "xi-api-key": API_KEY,
+                "Content-Type": "application/json",
+                "Accept": "audio/mpeg"
+            },
+            json={
+                "text": request.text,
+                "model_id": "eleven_monolingual_v1"
+            }
+        )
+
+        if response.status_code != 200:
+            raise HTTPException(
+                status_code=502,
+                detail=f"TTS API error: {response.text}"
+            )
+
+        return StreamingResponse(
+            io.BytesIO(response.content),
+            media_type="audio/mpeg",
+            headers={"Content-Disposition": "inline; filename=speech.mp3"}
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"TTS processing failed: {str(e)}"
+        )
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run("fastapi_app:app", host="0.0.0.0", port=8000, reload=True)

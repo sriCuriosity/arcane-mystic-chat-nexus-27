@@ -5,11 +5,16 @@ import io
 import os
 from dotenv import load_dotenv
 
+<<<<<<< HEAD
 load_dotenv()
+=======
+load_dotenv()  # Load environment variables from .env file
+>>>>>>> b38f7c3a (EnvSetup)
 
 app = Flask(__name__)
 CORS(app)
 
+<<<<<<< HEAD
 API_KEY = os.getenv('ELEVENLABS_API_KEY', 'sk_339f0f21eed6439fcfb045260e99cb4697147ee7bdd834b6')
 
 # Default voice mappings for different roles
@@ -46,6 +51,12 @@ def classify_intent():
     except Exception as e:
         print("Intent classification error:", e)
         return jsonify({"error": "Intent classification failed", "details": str(e)}), 500
+=======
+REACT_APP_ANOTHER_API_KEY = os.getenv('REACT_APP_ANOTHER_API_KEY')
+if not REACT_APP_ANOTHER_API_KEY:
+    raise ValueError("REACT_APP_ANOTHER_API_KEY environment variable is not set")
+VOICE_ID = 'IRHApOXLvnW57QJPQH2P' 
+>>>>>>> b38f7c3a (EnvSetup)
 
 @app.route('/speak', methods=['POST'])
 def speak():
@@ -53,11 +64,26 @@ def speak():
         data = request.get_json()
         print("Received JSON:", data)
 
+<<<<<<< HEAD
         text = data.get('text')
         character = data.get('character')
         
         if not text:
             return jsonify({"error": "No text provided"}), 400
+=======
+    response = requests.post(
+        f"https://api.elevenlabs.io/v1/text-to-speech/{VOICE_ID}",
+        headers={
+            "xi-api-key": REACT_APP_ANOTHER_API_KEY,
+            "Content-Type": "application/json",
+            "Accept": "audio/mpeg"
+        },
+        json={
+            "text": text,
+            "model_id": "eleven_monolingual_v1"
+        }
+    )
+>>>>>>> b38f7c3a (EnvSetup)
 
         # Get voice ID based on character role or use provided voiceId
         voice_id = character.get('voiceId')
