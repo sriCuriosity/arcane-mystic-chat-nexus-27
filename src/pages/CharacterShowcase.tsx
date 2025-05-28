@@ -7,6 +7,7 @@ interface LifeStage {
   description: string;
   bgColor: string;
   iconColor: string;
+  image?:string;
 }
 
 interface Character {
@@ -51,25 +52,32 @@ const CharacterShowcase: React.FC = () => {
           stage: "Child",
           description: "As a child, you're playful, curious, and love teaching through fun. You explain ideas using simple words, drawings, or silly comparisons, and get excited about little things like crayons or stickers.",
           bgColor: "bg-yellow-200",
-          iconColor: "text-yellow-600"
+          iconColor: "text-yellow-600",
+          image:"/images/Zara-child.jpg"
+          
+
         },
         {
           stage: "Teen",
           description: "As a teenager, you're clever, slightly sarcastic, and explain things like a cool tutor. You break down tricky topics with a mix of humor and logic, and you're not afraid to challenge someone to think deeper.",
           bgColor: "bg-orange-200",
-          iconColor: "text-orange-600"
+          iconColor: "text-orange-600",
+          image:"/images/Zara-teen.jpg"
+
         },
         {
           stage: "Adult",
           description: "As an adult, you're confident, well-prepared, and energetic. You use structured explanations, clear logic, and practical tips. You encourage users to ask questions and take charge of their own learning.",
           bgColor: "bg-blue-200",
-          iconColor: "text-blue-600"
+          iconColor: "text-blue-600",
+          image:"/images/Zara-adult.jpg"
         },
         {
           stage: "Senior",
           description: "As a senior, you're wise and patient, with a touch of humor. You share stories, connect lessons to real-life, and explain even complex ideas gently and thoroughly. You value understanding over speed.",
           bgColor: "bg-purple-200",
-          iconColor: "text-purple-600"
+          iconColor: "text-purple-600",
+          image:"/images/Zara-Senior.jpg"
         }
       ]
     },
@@ -89,31 +97,36 @@ const CharacterShowcase: React.FC = () => {
           stage: "Child",
           description: "Tell me how you feel... using crayon colors or cookie choices. I won't judge.",
           bgColor: "bg-pink-200",
-          iconColor: "text-pink-600"
+          iconColor: "text-pink-600",
+           image:"/images/Jade-Child.jpg"
         },
+
         {
           stage: "Teen",
           description: "I speak fluent overthinking—let's untangle your brain spaghetti together.",
           bgColor: "bg-green-200",
-          iconColor: "text-green-600"
+          iconColor: "text-green-600",
+          image:"/images/Jade-Teen.jpg"
         },
         {
           stage: "Adult",
           description: "Therapy, but with metaphors and maybe snacks. Let's talk grown-up chaos.",
           bgColor: "bg-teal-200",
-          iconColor: "text-teal-600"
+          iconColor: "text-teal-600",
+          image:"/images/Jade-Adult.jpg"
         },
         {
           stage: "Senior",
           description: "I offer calm, understanding, and emotional support drawn from a lifetime of listening.",
           bgColor: "bg-emerald-200",
-          iconColor: "text-emerald-600"
+          iconColor: "text-emerald-600",
+          image:"/images/Jade-Senior.jpg"
         }
       ]
     },
     {
       id: 3,
-      name: "Alex",
+      name: "Alexa",
       role: "Detective",
       icon: <Search className="w-12 h-12" />,
       bgGradient: "from-gray-400 via-slate-400 to-zinc-500",
@@ -121,37 +134,42 @@ const CharacterShowcase: React.FC = () => {
       secondaryColor: "bg-gray-300",
       accentColor: "bg-slate-600",
       voiceId:"zv0Q6YuQUa0P3IK62XgN",
-      systemPrompt: "You are Alex, a sharp and analytical detective. You approach problems methodically, ask detailed questions to gather information, look for patterns and connections, think critically about evidence, and help users solve problems step by step. Always be logical, observant, and thorough in your investigations.",
+      systemPrompt: "You are Alexa, a sharp and analytical detective. You approach problems methodically, ask detailed questions to gather information, look for patterns and connections, think critically about evidence, and help users solve problems step by step. Always be logical, observant, and thorough in your investigations.",
       lifeStages: [
         {
           stage: "Child",
           description: "I'm a curious little sleuth who loves solving puzzles and finding hidden clues!",
           bgColor: "bg-yellow-200",
-          iconColor: "text-yellow-600"
+          iconColor: "text-yellow-600",
+          image:"/images/Alexa-Child.jpg"
         },
         {
           stage: "Teen",
           description: "I notice the details others miss—let's uncover the truth together.",
           bgColor: "bg-blue-200",
-          iconColor: "text-blue-600"
+          iconColor: "text-blue-600",
+          image:"/images/Alexa-teen.jpg"
+
         },
         {
           stage: "Adult",
           description: "I'm sharp and analytical, helping you solve real-life mysteries with logic and intuition.",
           bgColor: "bg-gray-200",
-          iconColor: "text-gray-600"
+          iconColor: "text-gray-600",
+          image:"/images/Alexa-Adult.jpg"
         },
         {
           stage: "Senior",
           description: "I'm a seasoned investigator with years of experience in reading between the lines.",
           bgColor: "bg-slate-200",
-          iconColor: "text-slate-600"
+          iconColor: "text-slate-600",
+          image:"/images/Alexa-Senior.jpg"
         }
       ]
     },
     {
       id: 4,
-      name: "Clara",
+      name: "Claryen",
       role: "Friend",
       icon: <Users className="w-12 h-12" />,
       bgGradient: "from-pink-400 via-rose-400 to-red-500",
@@ -159,31 +177,36 @@ const CharacterShowcase: React.FC = () => {
       secondaryColor: "bg-pink-300",
       accentColor: "bg-rose-600",
       voiceId:"XcXEQzuLXRU9RcfWzEJt",
-      systemPrompt: "You are Clara, a warm and supportive friend. You're always there to listen, offer comfort during tough times, celebrate successes, give honest but kind advice, and maintain a positive outlook. Be conversational, caring, and genuinely interested in the user's life and wellbeing.",
+      systemPrompt: "You are Claryen, a warm and supportive friend. You're always there to listen, offer comfort during tough times, celebrate successes, give honest but kind advice, and maintain a positive outlook. Be conversational, caring, and genuinely interested in the user's life and wellbeing.",
       lifeStages: [
         {
           stage: "Child",
           description: "I'm your fun and loyal buddy, always ready to play, share snacks, and cheer you up!",
           bgColor: "bg-pink-200",
-          iconColor: "text-pink-600"
+          iconColor: "text-pink-600",
+           image:"/images/Claryen-Child.png"
+
         },
         {
           stage: "Teen",
           description: "I'm here through every mood swing, heartbreak, and meme—just a message away.",
           bgColor: "bg-purple-200",
-          iconColor: "text-purple-600"
+          iconColor: "text-purple-600",
+          image:"/images/Claryen-Teen.jpg"
         },
         {
           stage: "Adult",
           description: "Count on me to be your support system, no matter how hectic life gets.",
           bgColor: "bg-rose-200",
-          iconColor: "text-rose-600"
+          iconColor: "text-rose-600",
+          image:"/images/Claryen-Adult.jpg"
         },
         {
           stage: "Senior",
           description: "I'm the friend who's stayed through decades—warm, trustworthy, and always nearby.",
           bgColor: "bg-red-200",
-          iconColor: "text-red-600"
+          iconColor: "text-red-600",
+          image:"/images/Claryen-Senior.png"
         }
       ]
     },
@@ -203,31 +226,36 @@ const CharacterShowcase: React.FC = () => {
           stage: "Child",
           description: "I cheer you on with high-fives and smiles—you can do anything you dream of!",
           bgColor: "bg-yellow-200",
-          iconColor: "text-yellow-600"
+          iconColor: "text-yellow-600",
+          image:"/images/Rick-Child.jpg"
+
         },
         {
           stage: "Teen",
           description: "I inspire you to push through pressure and believe in your unique spark.",
           bgColor: "bg-orange-200",
-          iconColor: "text-orange-600"
+          iconColor: "text-orange-600",
+           image:"/images/Rick-Teen.avif"
         },
         {
           stage: "Adult",
           description: "I'm your inner fire—igniting confidence and purpose in everything you do.",
           bgColor: "bg-amber-200",
-          iconColor: "text-amber-600"
+          iconColor: "text-amber-600",
+           image:"/images/Rick-Adult.jpg"
         },
         {
           stage: "Senior",
           description: "I help you stay energized and positive, reminding you it's never too late to shine.",
           bgColor: "bg-yellow-200",
-          iconColor: "text-yellow-600"
+          iconColor: "text-yellow-600",
+           image:"/images/Rick-Senior.jpg"
         }
       ]
     },
     {
       id: 6,
-      name: "Mark",
+      name: "Marie",
       role: "Professional",
       icon: <Briefcase className="w-12 h-12" />,
       bgGradient: "from-slate-400 via-gray-500 to-zinc-600",
@@ -235,37 +263,42 @@ const CharacterShowcase: React.FC = () => {
       secondaryColor: "bg-slate-300",
       accentColor: "bg-gray-700",
       voiceId:"uju3wxzG5OhpWcoi3SMy",
-      systemPrompt: "You are Mark, a focused and accomplished professional. You provide structured advice, help with career planning, offer business insights, emphasize efficiency and results, and guide users toward professional success. Always be direct, organized, and goal-oriented in your communication.",
+      systemPrompt: "You are Marie, a focused and accomplished professional. You provide structured advice, help with career planning, offer business insights, emphasize efficiency and results, and guide users toward professional success. Always be direct, organized, and goal-oriented in your communication.",
       lifeStages: [
         {
           stage: "Child",
           description: "I help you dream big—pretending to be a doctor, astronaut, or anything you imagine!",
           bgColor: "bg-blue-200",
-          iconColor: "text-blue-600"
+          iconColor: "text-blue-600",
+          image:"/images/Marie-Child.jpg"
+
         },
         {
           stage: "Teen",
           description: "I guide you toward your career goals with smart planning and real-world prep.",
           bgColor: "bg-indigo-200",
-          iconColor: "text-indigo-600"
+          iconColor: "text-indigo-600",
+          image:"/images/Marie-teen.jpg"
         },
         {
           stage: "Adult",
           description: "I bring focus, structure, and confidence to your professional journey.",
           bgColor: "bg-slate-200",
-          iconColor: "text-slate-600"
+          iconColor: "text-slate-600",
+          image:"/images/Marie-Adult.jpg"
         },
         {
           stage: "Senior",
           description: "I honor your achievements and help you pass on your legacy with grace.",
           bgColor: "bg-gray-200",
-          iconColor: "text-gray-600"
+          iconColor: "text-gray-600",
+          image:"/images/Marie-Senior.jpg"
         }
       ]
     },
     {
       id: 7,
-      name: "Ria",
+      name: "Rian",
       role: "Funny",
       icon: <Smile className="w-12 h-12" />,
       bgGradient: "from-lime-400 via-green-400 to-emerald-500",
@@ -273,37 +306,41 @@ const CharacterShowcase: React.FC = () => {
       secondaryColor: "bg-lime-300",
       accentColor: "bg-green-600",
       voiceId:"CyHwTRKhXEYuSd7CbMwI",
-      systemPrompt: "You are Ria, a hilarious and witty comedian. You use humor to lighten moods, tell jokes and funny stories, find the amusing side of situations, use puns and wordplay, and help users laugh at life's absurdities. Always keep things light-hearted and entertaining while still being helpful.",
+      systemPrompt: "You are Rian, a hilarious and witty comedian. You use humor to lighten moods, tell jokes and funny stories, find the amusing side of situations, use puns and wordplay, and help users laugh at life's absurdities. Always keep things light-hearted and entertaining while still being helpful.",
       lifeStages: [
         {
           stage: "Child",
           description: "I tell knock-knock jokes, wear socks on my hands, and believe giggles are magic spells.",
           bgColor: "bg-lime-200",
-          iconColor: "text-lime-600"
+          iconColor: "text-lime-600",
+          image:"/images/Rian-Child.jpg"
         },
         {
           stage: "Teen",
           description: "I roast my friends (with love), do impressions of teachers, and make memes out of math problems.",
           bgColor: "bg-green-200",
-          iconColor: "text-green-600"
+          iconColor: "text-green-600",
+          image:"/images/Rian-Teen.jpg"
         },
         {
           stage: "Adult",
           description: "I survive life with bad puns, coffee-fueled sarcasm, and the occasional dance in the kitchen.",
           bgColor: "bg-emerald-200",
-          iconColor: "text-emerald-600"
+          iconColor: "text-emerald-600",
+          image:"/images/Rian-Adult.png"
         },
         {
           stage: "Senior",
           description: "I've got jokes older than your playlist—and yes, I still laugh at them louder than anyone else!",
           bgColor: "bg-teal-200",
-          iconColor: "text-teal-600"
+          iconColor: "text-teal-600",
+          image:"/images/Rian-Senior.png"
         }
       ]
     },
     {
       id: 8,
-      name: "Tina",
+      name: "Tiyan",
       role: "Poet",
       icon: <PenTool className="w-12 h-12" />,
       bgGradient: "from-violet-400 via-purple-400 to-fuchsia-500",
@@ -311,31 +348,35 @@ const CharacterShowcase: React.FC = () => {
       secondaryColor: "bg-violet-300",
       accentColor: "bg-purple-600",
       voiceId:"pjcYQlDFKMbcOUp6F5GD",
-      systemPrompt: "You are Tina, a creative and expressive poet. You speak in metaphors and beautiful imagery, find poetry in everyday moments, express emotions through artistic language, use rhythm and flow in your responses, and help users see the world through a more artistic lens. Incorporate poetic elements and creativity into all your interactions.",
+      systemPrompt: "You are Tiyan, a creative and expressive poet. You speak in metaphors and beautiful imagery, find poetry in everyday moments, express emotions through artistic language, use rhythm and flow in your responses, and help users see the world through a more artistic lens. Incorporate poetic elements and creativity into all your interactions.",
       lifeStages: [
         {
           stage: "Child",
           description: "I see the world in colors and rhymes, turning playground stories into tiny poems.",
           bgColor: "bg-violet-200",
-          iconColor: "text-violet-600"
+          iconColor: "text-violet-600",
+          image:"/images/Tiyan-Child.jpg"
         },
         {
           stage: "Teen",
           description: "I scribble feelings in secret notebooks, chasing the music of words and teenage dreams.",
           bgColor: "bg-purple-200",
-          iconColor: "text-purple-600"
+          iconColor: "text-purple-600",
+          image:"/images/Tiyan-Teen.avif"
         },
         {
           stage: "Adult",
           description: "I craft verses that capture life's chaos and beauty—sometimes serious, sometimes playful.",
           bgColor: "bg-fuchsia-200",
-          iconColor: "text-fuchsia-600"
+          iconColor: "text-fuchsia-600",
+          image:"/images/Tiyan-Adult.jpg"
         },
         {
           stage: "Senior",
           description: "I weave memories into gentle poems, sharing wisdom wrapped in metaphor and melody.",
           bgColor: "bg-pink-200",
-          iconColor: "text-pink-600"
+          iconColor: "text-pink-600",
+          image:"/images/Tiyan-Senior.jpg"
         }
       ]
     }
@@ -587,8 +628,7 @@ const CharacterShowcase: React.FC = () => {
       />
     </div>
   );
-
-  const CharacterCard = ({ character, lifeStage, isEngaged, onToggle }: { 
+const CharacterCard = ({ character, lifeStage, isEngaged, onToggle }: { 
     character: Character; 
     lifeStage: LifeStage; 
     isEngaged: boolean;
@@ -616,13 +656,30 @@ const CharacterShowcase: React.FC = () => {
             {isEngaged ? 'Engaged' : 'Not Engaged'}
           </span>
         </div>
-
-        <div className={`h-48 ${lifeStage.bgColor} flex items-center justify-center transition-all duration-500`}>
-          <div className={`${lifeStage.iconColor} transition-all duration-500 pulse-glow`}>
-            {character.icon}
-          </div>
-        </div>
-        
+ <div className={`h-48 ${lifeStage.bgColor} flex items-center justify-center transition-all duration-500`}>
+  <div
+  className={`${lifeStage.iconColor} transition-all duration-500 pulse-glow flex items-center justify-center`}
+  style={{
+    width: '180px',
+    height: '180px',
+    borderRadius: '50%',
+    overflow: 'hidden',
+    boxShadow: `0 0 15px 5px ${lifeStage.bgColor}`, // Glow effect
+    border: '4px solid white',
+  }}
+>
+  {lifeStage.image ? (
+    <img
+      src={lifeStage.image}
+      alt={`${character.name} ${lifeStage.stage}`}
+      className="w-full h-full object-fit:contain object-center" // Corrected class name
+    />
+  ) : (
+    character.icon
+  )}
+  </div>
+</div>
+ 
         <div className="p-6 h-48 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-3">
@@ -644,7 +701,6 @@ const CharacterShowcase: React.FC = () => {
       </div>
     </div>
   );
-
   const navigate = useNavigate();
 
   return (
