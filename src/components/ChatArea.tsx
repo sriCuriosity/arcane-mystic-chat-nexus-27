@@ -15,6 +15,7 @@ import { Loader2 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { motion } from 'framer-motion';
 import ReactMarkdown from "react-markdown";
+import MessageInput from "@/components/MessageInput";
 
 interface ChatAreaProps {
   messages: Message[];
@@ -22,6 +23,13 @@ interface ChatAreaProps {
   onToggleStar: (messageId: string) => void;
   onPlayMessage: (messageId: string, content: string) => void;
   currentlyPlaying: string | null;
+  selectedDomain?: {
+    id: string;
+    label: string;
+    icon: React.ReactNode;
+    description: string;
+  };
+  onPromptClick?: (prompt: string) => void;
 }
 
 interface ParsedResponse {
@@ -29,16 +37,39 @@ interface ParsedResponse {
   code?: string;
 }
 
-const ChatArea = ({ messages, isLoading, onToggleStar, onPlayMessage, currentlyPlaying }: ChatAreaProps) => {
+const ChatArea = ({ messages, isLoading, onToggleStar, onPlayMessage, currentlyPlaying, selectedDomain, onPromptClick }: ChatAreaProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [selectedPrompt, setSelectedPrompt] = useState<string>("");
   const { isDarkMode } = useTheme();
 
   useEffect(() => {
-    messages.length > 0 && messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messages.length > 0) {
+      const scrollOptions: ScrollIntoViewOptions = {
+        behavior: "smooth",
+        block: "end" as ScrollLogicalPosition
+      };
+      messagesEndRef.current?.scrollIntoView(scrollOptions);
+    }
   }, [messages]);
+
+  // Add a new effect to handle scroll on window resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (messages.length > 0) {
+        const scrollOptions: ScrollIntoViewOptions = {
+          behavior: "smooth",
+          block: "end" as ScrollLogicalPosition
+        };
+        messagesEndRef.current?.scrollIntoView(scrollOptions);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [messages.length]);
 
   const formatTimestamp = (date: Date | string) => {
     const dateObj = typeof date === 'string' ? new Date(date) : date;
@@ -573,6 +604,44 @@ const ChatArea = ({ messages, isLoading, onToggleStar, onPlayMessage, currentlyP
     );
   };
 
+  const getDomainPrompts = (domainId: string) => {
+    const prompts = {
+      creative: [
+        "Help me brainstorm creative writing ideas",
+        "Show me how to create an interactive art piece",
+        "Teach me about storytelling techniques"
+      ],
+      finance: [
+        "Explain basic investment strategies",
+        "Help me create a personal budget plan",
+        "What are the best practices for saving money?"
+      ],
+      health: [
+        "Guide me through a mindfulness exercise",
+        "Explain the benefits of regular exercise",
+        "How can I improve my mental wellbeing?"
+      ],
+      research: [
+        "Help me analyze this research paper",
+        "Explain the scientific method",
+        "What are the latest developments in AI?"
+      ],
+      casual: [
+        "Tell me an interesting fact",
+        "What's a fun way to learn something new?",
+        "Share a quick brain teaser"
+      ]
+    };
+    return prompts[domainId as keyof typeof prompts] || [];
+  };
+
+  const handlePromptClick = (prompt: string) => {
+    setSelectedPrompt(prompt);
+    if (onPromptClick) {
+      onPromptClick(prompt);
+    }
+  };
+
   return (
     <div 
       className={cn("flex-grow overflow-y-auto p-6 transition-colors duration-200", isDarkMode ? "bg-slate-900 text-slate-200" : "bg-gradient-to-br from-slate-50 via-white to-blue-50")}
@@ -581,12 +650,39 @@ const ChatArea = ({ messages, isLoading, onToggleStar, onPlayMessage, currentlyP
         <div className="h-full flex flex-col items-center justify-center text-center">
           <div className={cn("p-6 rounded-2xl shadow-lg border max-w-md", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200")}>
             <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Sparkles size={24} className="text-white" />
+              {selectedDomain?.icon || <Sparkles size={24} className="text-white" />}
             </div>
-            <h3 className={cn("text-xl font-semibold mb-3", isDarkMode ? "text-slate-100" : "text-slate-800")}>Start Your Conversation</h3>
-            <p className={cn("leading-relaxed", isDarkMode ? "text-slate-300" : "text-slate-600")}>
-              Ask me anything! I can help you learn, solve problems, or create interactive study materials.
-            </p>
+            <h3 className={cn("text-xl font-semibold mb-3", isDarkMode ? "text-slate-100" : "text-slate-800")}>
+              {selectedDomain ? `Welcome to ${selectedDomain.label}!` : "Start Your Conversation"}
+            </h3>
+            {selectedDomain && (
+              <p className={cn("leading-relaxed mb-6", isDarkMode ? "text-slate-300" : "text-slate-600")}>
+                {selectedDomain.description}
+              </p>
+            )}
+            {selectedDomain && onPromptClick && (
+              <div className="space-y-3 mt-4">
+                {getDomainPrompts(selectedDomain.id).map((prompt, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handlePromptClick(prompt)}
+                    className={cn(
+                      "w-full p-3 text-left rounded-lg transition-all duration-200",
+                      isDarkMode 
+                        ? "bg-slate-700 hover:bg-slate-600 text-slate-200" 
+                        : "bg-slate-50 hover:bg-slate-100 text-slate-700"
+                    )}
+                  >
+                    {prompt}
+                  </button>
+                ))}
+              </div>
+            )}
+            {!selectedDomain && (
+              <p className={cn("leading-relaxed", isDarkMode ? "text-slate-300" : "text-slate-600")}>
+                Ask me anything! I can help you learn, solve problems, or create interactive study materials.
+              </p>
+            )}
           </div>
         </div>
       ) : (

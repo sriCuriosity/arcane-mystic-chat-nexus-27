@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
-import { User, MessageSquare, History, BookOpen, Folder, Plus, FolderOpen, Edit3, Check, X } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { User, MessageSquare, History, BookOpen, Folder, Plus, FolderOpen, Edit3, Check, X, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -23,6 +23,12 @@ interface AppHeaderProps {
   onLoadChat: (chatId: string) => void;
   currentChatId: string;
   onNewChat: () => void;
+  selectedDomain?: {
+    id: string;
+    label: string;
+    icon: React.ReactNode;
+    description: string;
+  };
 }
 
 interface ChatFolder {
@@ -32,7 +38,7 @@ interface ChatFolder {
   createdAt: string;
 }
 
-const AppHeader = ({ messages, onLoadChat, currentChatId, onNewChat }: AppHeaderProps) => {
+const AppHeader = ({ messages, onLoadChat, currentChatId, onNewChat, selectedDomain }: AppHeaderProps) => {
   // Get active folder from localStorage
   const getActiveFolder = () => {
     return localStorage.getItem('activeFolderId') || 'default';
@@ -85,7 +91,6 @@ const AppHeader = ({ messages, onLoadChat, currentChatId, onNewChat }: AppHeader
         const chatData = localStorage.getItem(key);
         if (chatData) {
           const parsedData = JSON.parse(chatData);
-          // Check if this is the new format with folder info
           if (parsedData.messages && Array.isArray(parsedData.messages)) {
             allChats.push({
               id: chatId,
@@ -93,7 +98,6 @@ const AppHeader = ({ messages, onLoadChat, currentChatId, onNewChat }: AppHeader
               folderId: parsedData.folderId || 'default'
             });
           } else {
-            // Old format - just messages array
             allChats.push({
               id: chatId,
               messages: parsedData,
@@ -240,21 +244,6 @@ const AppHeader = ({ messages, onLoadChat, currentChatId, onNewChat }: AppHeader
     onNewChat();
   };
 
-  // Helper function to save chat with current folder
-  const saveChatToActiveFolder = (chatId: string, chatMessages: Message[]) => {
-    const chatData = {
-      messages: chatMessages,
-      folderId: currentChatFolderId
-    };
-    localStorage.setItem(`chat_${chatId}`, JSON.stringify(chatData));
-  };
-
-  // Expose this function to parent component if needed
-  React.useEffect(() => {
-    // Store the save function globally so other components can use it
-    (window as any).saveChatToActiveFolder = saveChatToActiveFolder;
-  }, [currentChatFolderId]);
-
   return (
     <>
       <header className="fixed top-0 left-0 w-full flex justify-between items-center px-6 py-4 border-b border-border/40 bg-background/80 backdrop-blur-md shadow-sm transition-colors duration-200">
@@ -266,7 +255,7 @@ const AppHeader = ({ messages, onLoadChat, currentChatId, onNewChat }: AppHeader
             </div>
             <div className="hidden sm:block">
               <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                ChatAI
+                Infinenix
               </h1>
               <p className="text-xs text-muted-foreground">Intelligent Assistant</p>
             </div>
@@ -277,7 +266,6 @@ const AppHeader = ({ messages, onLoadChat, currentChatId, onNewChat }: AppHeader
         <div className="flex items-center gap-2">
           <DropdownMenu onOpenChange={(open) => {
             if (!open) {
-              // Reset selected folder to current chat's folder when dropdown closes
               setSelectedFolderId(currentChatFolderId);
             }
           }}>
@@ -377,7 +365,7 @@ const AppHeader = ({ messages, onLoadChat, currentChatId, onNewChat }: AppHeader
                             className={cn(
                               "text-blue-600 dark:text-blue-400 drop-shadow-sm",
                               selectedFolderId === folder.id && "animate-pulse"
-                            )} 
+                            )}
                           />
                         ) : (
                           <Folder size={16} className="text-muted-foreground" />
@@ -536,6 +524,34 @@ const AppHeader = ({ messages, onLoadChat, currentChatId, onNewChat }: AppHeader
             <BookOpen size={16} />
             <span className="hidden sm:inline">Library</span>
           </Button>
+
+          {/* Modified Domain Display Button */}
+          {selectedDomain ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate("/")}
+              className="flex items-center gap-2 px-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border border-blue-200/50 dark:border-blue-800/50 hover:from-blue-100 hover:to-purple-100 dark:hover:from-blue-900/30 dark:hover:to-purple-900/30 transition-all duration-200"
+            >
+              <ArrowLeft size={14} className="text-blue-600 dark:text-blue-400" />
+              <div className="flex items-center gap-2">
+                {selectedDomain.icon}
+                <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                  {selectedDomain.label}
+                </span>
+              </div>
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate("/")}
+              className="flex items-center gap-2 px-4 hover:bg-blue-50 dark:hover:bg-blue-900/50 transition-colors"
+            >
+              <ArrowLeft size={14} />
+              <span className="hidden sm:inline">Select Domain</span>
+            </Button>
+          )}
         </div>
 
         {/* Right - User Actions */}
