@@ -1,4 +1,3 @@
-# fastapi_app.py
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -884,6 +883,3 @@ async def text_to_speech(request: TTSRequest):
             detail=f"TTS processing failed: {str(e)}"
         )
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
