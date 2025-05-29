@@ -545,7 +545,7 @@ const AppHeader = ({ messages, onLoadChat, currentChatId, onNewChat, selectedDom
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => navigate("/")}
+              onClick={() => navigate("/DomainSelector")}
               className="flex items-center gap-2 px-4 hover:bg-blue-50 dark:hover:bg-blue-900/50 transition-colors"
             >
               <ArrowLeft size={14} />

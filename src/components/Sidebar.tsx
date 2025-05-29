@@ -154,6 +154,14 @@ const Sidebar = ({
 
   const { currentUser, logout } = useAuth();
 
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
   return (
     <>
       {/* Sidebar */}
@@ -379,10 +387,11 @@ const Sidebar = ({
                     <Settings size={16} />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="right" className={isDarkMode ? "bg-slate-700 border-slate-600 text-slate-200" : ""}>
-                  <Button onClick={logout}>
-                    Logout
-                  </Button>
+                <TooltipContent
+                  side="right"
+                  className={`pointer-events-auto ${isDarkMode ? "bg-slate-700 border-slate-600 text-slate-200" : ""}`}
+                >
+                  <Button onClick={handleLogout}>Logout</Button>
                 </TooltipContent>
               </Tooltip>
             </div>

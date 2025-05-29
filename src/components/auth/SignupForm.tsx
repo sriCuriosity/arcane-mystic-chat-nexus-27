@@ -4,7 +4,6 @@ import { User, Mail, Lock } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Input } from '../ui/LoginInput';
 import { Button } from '../ui/LoginButton';
-import { navigateToDomainSelector } from '../../utils/navigation';
 import { useNavigate } from 'react-router-dom';
 
 interface SignupFormProps {
@@ -12,7 +11,7 @@ interface SignupFormProps {
 }
 
 export const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin }) => {
-  const { signup } = useAuth();
+  const { signup, loading } = useAuth();
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -22,51 +21,105 @@ export const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     setError('');
+    setSuccess('');
   };
 
   const validateForm = (): boolean => {
-    if (formData.password !== formData.confirmPassword) {
-      setError('Security protocols do not match');
+    if (!formData.username.trim()) {
+      setError('Username is required');
       return false;
     }
-    if (formData.password.length < 6) {
-      setError('Security protocol must be at least 6 characters');
+    
+    if (formData.username.length < 3) {
+      setError('Username must be at least 3 characters');
       return false;
     }
+    
+    if (!formData.email.trim()) {
+      setError('Email is required');
+      return false;
+    }
+    
     if (!formData.email.includes('@')) {
       setError('Invalid neural link address format');
       return false;
     }
+    
+    if (!formData.password) {
+      setError('Password is required');
+      return false;
+    }
+    
+    if (formData.password.length < 6) {
+      setError('Security protocol must be at least 6 characters');
+      return false;
+    }
+    
+    if (formData.password !== formData.confirmPassword) {
+      setError('Security protocols do not match');
+      return false;
+    }
+    
     return true;
   };
 
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    
+
     if (!validateForm()) return;
-    
+
     setIsLoading(true);
     setError('');
+    setSuccess('');
+
+    console.log('Submitting signup form...');
 
     try {
-      const success = await signup(formData.username, formData.email, formData.password);
-      if (success) {
-        navigateToDomainSelector(navigate);
+      const result = await signup(formData.username, formData.email, formData.password);
+      console.log('Signup result:', result);
+
+      if (result.success && !result.error) {
+        // Signup successful with no issues
+        console.log('Signup successful, navigating...');
+        navigate('/DomainSelector');
+      } else if (result.success && result.error) {
+        // Signup successful, but confirmation required
+        setSuccess(result.error);
+        setFormData({
+          username: '',
+          email: '',
+          password: '',
+          confirmPassword: ''
+        });
       } else {
-        setError('Identity already exists in the network');
+        // Signup failed
+        setError(result.error || 'Registration failed');
       }
     } catch (err) {
+      console.error('Signup exception:', err);
       setError('Network registration failed');
     } finally {
       setIsLoading(false);
+      console.log('Finished handling signup');
     }
   };
+
+
+  // Show loading spinner while auth is initializing
+  if (loading) {
+    return (
+      <div className="w-full max-w-md flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-400"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-md">
@@ -84,6 +137,12 @@ export const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin }) => {
         {error && (
           <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
             {error}
+          </div>
+        )}
+        
+        {success && (
+          <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-lg text-green-400 text-sm">
+            {success}
           </div>
         )}
 
@@ -131,7 +190,11 @@ export const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin }) => {
           onTogglePassword={() => setShowConfirmPassword(!showConfirmPassword)}
         />
 
-        <Button type="button" disabled={isLoading} onClick={() => handleSubmit()}>
+        <Button 
+          type="button" 
+          disabled={isLoading || loading} 
+          onClick={() => handleSubmit()}
+        >
           {isLoading ? 'Registering Identity...' : 'Initialize Neural Matrix'}
         </Button>
 
@@ -140,7 +203,8 @@ export const SignupForm: React.FC<SignupFormProps> = ({ onSwitchToLogin }) => {
           <button
             type="button"
             onClick={onSwitchToLogin}
-            className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-cyan-400 hover:from-pink-400 hover:to-purple-400 transition-all duration-300 font-medium"
+            disabled={isLoading || loading}
+            className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-cyan-400 hover:from-pink-400 hover:to-purple-400 transition-all duration-300 font-medium disabled:opacity-50"
           >
             Access Existing Identity
           </button>
