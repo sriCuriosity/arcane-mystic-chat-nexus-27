@@ -2,8 +2,10 @@
 import axios from "axios";
 
 const SONAR_API_URL = "https://api.perplexity.ai/chat/completions";
-const SONAR_API_TOKEN = "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";
-const INTENT_API_URL = "http://127.0.0.1:8000";
+// Read the API token from an environment variable
+const SONAR_API_TOKEN = import.meta.env.REACT_APP_SONAR_API_TOKEN;
+// Read the API URL from an environment variable
+const INTENT_API_URL = "https://intent-api-ageucxh0c3bvewa5.canadacentral-01.azurewebsites.net";
 
 export interface IntentResult {
   matched_intention: string | null;
@@ -24,9 +26,6 @@ export interface SpeechRequest {
 }
 
 export class ApiService {
-  /**
-   * Classifies user intent using the backend API
-   */
   static async classifyIntent(prompt: string): Promise<IntentResult> {
     try {
       const response = await axios.post(`${INTENT_API_URL}/classify-intent`, {

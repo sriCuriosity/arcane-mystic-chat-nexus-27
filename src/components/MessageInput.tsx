@@ -73,17 +73,25 @@ declare global {
 interface MessageInputProps {
   onSendMessage: (content: string) => void;
   disabled?: boolean;
+  initialMessage?: string;
+  inputText: string;
+  setInputText: (text: string) => void;
 }
 
-const MessageInput = ({ onSendMessage, disabled }: MessageInputProps) => {
-  const [message, setMessage] = useState("");
+const MessageInput = ({ onSendMessage, disabled, initialMessage, inputText, setInputText }: MessageInputProps) => {
   const [isRecording, setIsRecording] = useState(false);
   const { isDarkMode } = useTheme();
 
+  useEffect(() => {
+    if (initialMessage) {
+      setInputText(initialMessage);
+    }
+  }, [initialMessage, setInputText]);
+
   const handleSend = () => {
-    if (message.trim()) {
-      onSendMessage(message);
-      setMessage("");
+    if (inputText.trim()) {
+      onSendMessage(inputText);
+      setInputText("");
     }
   };
 
@@ -157,8 +165,8 @@ const MessageInput = ({ onSendMessage, disabled }: MessageInputProps) => {
             {/* Message Input */}
             <div className="flex-grow relative">
               <textarea
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Type your message... (Shift + Enter for new line)"
                 className={cn(
@@ -212,15 +220,15 @@ const MessageInput = ({ onSendMessage, disabled }: MessageInputProps) => {
                 <Button
                   onClick={handleSend}
                   size="icon" 
-                  disabled={!message.trim() || disabled}
+                  disabled={!inputText.trim() || disabled}
                   className={cn(
                     `flex-shrink-0 h-10 w-10 rounded-full transition-all duration-200`,
-                    message.trim() 
+                    inputText.trim() 
                       ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl transform hover:scale-105' 
                       : isDarkMode ? 'bg-slate-700 cursor-not-allowed text-slate-500' : 'bg-slate-200 cursor-not-allowed'
                   )}
                 >
-                  <Send size={18} className={message.trim() ? 'text-white' : isDarkMode ? 'text-slate-400' : 'text-slate-400'} />
+                  <Send size={18} className={inputText.trim() ? 'text-white' : isDarkMode ? 'text-slate-400' : 'text-slate-400'} />
                 </Button>
               </TooltipTrigger>
               <TooltipContent className={isDarkMode ? "bg-slate-700 border-slate-600 text-slate-200" : ""}>
@@ -240,8 +248,8 @@ const MessageInput = ({ onSendMessage, disabled }: MessageInputProps) => {
                 </span>
               )}
             </div>
-            <span className={cn(message.length > 1000 ? 'text-orange-500' : '', isDarkMode && message.length <= 1000 && "text-slate-400")}>
-              {message.length}/2000
+            <span className={cn(inputText.length > 1000 ? 'text-orange-500' : '', isDarkMode && inputText.length <= 1000 && "text-slate-400")}>
+              {inputText.length}/2000
             </span>
           </div>
         </Card>

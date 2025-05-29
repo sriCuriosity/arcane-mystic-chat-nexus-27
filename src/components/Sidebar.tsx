@@ -23,6 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Input } from "@/components/ui/input";
+import { useAuth } from '../contexts/AuthContext';
 import { Link } from "react-router-dom";
 
 interface SidebarProps {
@@ -151,6 +152,16 @@ const Sidebar = ({
   };
 
   const currentModel = models.find(m => m.name === selectedModel) || models[0];
+
+  const { currentUser, logout } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
 
   return (
     <>
@@ -378,8 +389,11 @@ const Sidebar = ({
                     </Button>
                   </Link>
                 </TooltipTrigger>
-                <TooltipContent side="right" className={isDarkMode ? "bg-slate-700 border-slate-600 text-slate-200" : ""}>
-                  Settings
+                <TooltipContent
+                  side="right"
+                  className={`pointer-events-auto ${isDarkMode ? "bg-slate-700 border-slate-600 text-slate-200" : ""}`}
+                >
+                  <Button onClick={handleLogout}>Logout</Button>
                 </TooltipContent>
               </Tooltip>
             </div>
