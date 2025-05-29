@@ -9,7 +9,6 @@ numpy
 sentence-transformers
 scikit-learn
 torch
-<<<<<<< HEAD
 flask
 flask-cors
 requests
@@ -17,6 +16,3 @@ python-dotenv
 pandas
 tqdm
 transformers
-=======
-flask
->>>>>>> b38f7c3a (EnvSetup)
