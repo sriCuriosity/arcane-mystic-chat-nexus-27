@@ -23,6 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Input } from "@/components/ui/input";
+import { useAuth } from '../contexts/AuthContext';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -150,6 +151,8 @@ const Sidebar = ({
   };
 
   const currentModel = models.find(m => m.name === selectedModel) || models[0];
+
+  const { currentUser, logout } = useAuth();
 
   return (
     <>
@@ -377,7 +380,9 @@ const Sidebar = ({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="right" className={isDarkMode ? "bg-slate-700 border-slate-600 text-slate-200" : ""}>
-                  Settings
+                  <Button onClick={logout}>
+                    Logout
+                  </Button>
                 </TooltipContent>
               </Tooltip>
             </div>
