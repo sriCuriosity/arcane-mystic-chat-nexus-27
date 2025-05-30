@@ -26,20 +26,6 @@ export default function ChatPage() {
     currentlyPlaying,
   } = useChatLogic();
 
-  // Auto-reload once on first mount if not already reloaded
-  /*useEffect(() => {
-    if (!window.location.hash.includes("#reloaded")) {
-      window.location.hash = "#reloaded";
-      window.location.reload();
-    }
-  }, []);*/
-
-  // Clean up the hash after reload
-  useEffect(() => {
-    if (window.location.hash === "#reloaded") {
-      window.history.replaceState(null, "", window.location.pathname + window.location.search);
-    }
-  }, []);
 
   // Load selected domain from location state
   useEffect(() => {
