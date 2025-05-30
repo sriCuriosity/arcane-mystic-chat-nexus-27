@@ -240,7 +240,7 @@ const Sidebar = ({
         </div>
 
         {/* Filters Section - At the top with max 4 visible */}
-        <div className={cn("p-3", !isOpen && "px-2")}>
+        <div className={cn("p-3", !isOpen && "px-2")} data-tour-element="filter-section">
           <div className={cn("flex items-center justify-between mb-3", !isOpen && "justify-center")}>
             {isOpen ? (
               <span className={cn("text-sm font-semibold", isDarkMode ? "text-slate-100" : "text-slate-700")}>Smart Filters</span>
@@ -258,7 +258,7 @@ const Sidebar = ({
                   {filterTags.length}
                 </Badge>
                 <Button variant="ghost" size="icon" className={cn("h-6 w-6", isDarkMode && "hover:bg-slate-800")}
-                  onClick={addFilter}>
+                  onClick={addFilter} data-tour-element="filter-add-button">
                   <Plus size={14} />
                 </Button>
               </div>
@@ -316,7 +316,7 @@ const Sidebar = ({
         </div>
 
         {/* AI Model Selector - Moved to bottom */}
-        <div className={cn("p-3", !isOpen && "px-2")}>
+        <div className={cn("p-3", !isOpen && "px-2")} data-tour-element="ai-model-section">
           {isOpen && (
             <div className="flex items-center gap-2 mb-3">
               <currentModel.icon size={14} className={currentModel.color} />

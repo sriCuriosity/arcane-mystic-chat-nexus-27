@@ -3,6 +3,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { User, MessageSquare, History, BookOpen, Folder, Plus, FolderOpen, Edit3, Check, X, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { StepType, TourProvider } from '@reactour/tour';
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +19,7 @@ import LibraryModal from './LibraryModal';
 import Cube3DIcon from './Cube3DIcon';
 import { Message } from "@/types/chat";
 import { cn } from "@/lib/utils";
+import { StartTourButton } from "./StartTourButton";
 
 interface AppHeaderProps {
   messages: Message[];
@@ -244,8 +247,60 @@ const AppHeader = ({ messages, onLoadChat, currentChatId, onNewChat, selectedDom
     onNewChat();
   };
 
+  const steps: StepType[]  = [
+    {
+      selector: '[data-tour-element="chracter-showcase-button"]',
+      content: 'Explore the character showcase. Click to view available characters.',
+    },
+    {
+      selector: '[data-tour-element="filter-section"]',
+      content: 'Filter your chat history by domain or type. Click to open filter options.'
+    },
+    {
+      selector: '[data-tour-element="ai-model-section"]',
+      content: 'Select the AI model for your chat. Click to choose a different model.',
+    },
+    {
+      selector: '[data-tour-element="prompt-input"]',
+      content: 'Type your message here. Press Enter to send.',
+    },
+    {
+      selector: '[data-tour-element="history-button"]',
+      content: 'Used to find history of your chats. Click to open chat history.',
+    },
+    {
+      selector: '[data-tour-element="library-button"]',
+      content: 'Access the library of prompts and resources. Click to open the library modal.'
+    },
+  ];
+
   return (
-    <>
+    <TourProvider steps={steps} styles={{
+      maskArea: (base) => ({
+        ...base,
+        rx: 8, // Rounded corners for highlight
+      }),
+      popover: (base) => ({
+        ...base,
+        backgroundColor: '#1e293b', // Dark background
+        color: 'white',             // Text color
+        padding: '20px',
+        margin: '13px',
+        borderRadius: '12px',
+        fontFamily: 'Inter, sans-serif',
+        fontSize: '16px',
+        boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
+      }),
+      badge: (base) => ({
+        ...base,
+        backgroundColor: '#9333ea', // Purple badge
+        color: 'white',
+      }),
+      close: (base) => ({
+        ...base,
+        color: 'white',
+      }),
+    }}>
       <header className="fixed top-0 left-0 w-full flex justify-between items-center px-6 py-4 border-b border-border/40 bg-background/80 backdrop-blur-md shadow-sm transition-colors duration-200">
         {/* Left - Brand */}
         <div className="flex items-center gap-4">
@@ -262,6 +317,8 @@ const AppHeader = ({ messages, onLoadChat, currentChatId, onNewChat, selectedDom
           </div>
         </div>
 
+        <StartTourButton />
+
         {/* Center - Navigation */}
         <div className="flex items-center gap-2">
           <DropdownMenu onOpenChange={(open) => {
@@ -274,6 +331,7 @@ const AppHeader = ({ messages, onLoadChat, currentChatId, onNewChat, selectedDom
                 variant="ghost"
                 size="sm"
                 className="flex items-center gap-2 px-4"
+                data-tour-element="history-button"
               >
                 <History size={16} />
                 <span className="hidden sm:inline">History</span>
@@ -520,6 +578,7 @@ const AppHeader = ({ messages, onLoadChat, currentChatId, onNewChat, selectedDom
             size="sm"
             onClick={() => setIsLibraryOpen(true)}
             className="flex items-center gap-2 px-4"
+            data-tour-element="library-button"
           >
             <BookOpen size={16} />
             <span className="hidden sm:inline">Library</span>
@@ -573,12 +632,13 @@ const AppHeader = ({ messages, onLoadChat, currentChatId, onNewChat, selectedDom
             variant="ghost" 
             size="icon" 
             className="h-10 w-10 p-0 [&_svg]:!size-8"
-            onClick={() => navigate("/")}
+            onClick={() => navigate("/DomainSelector")}
           >
             <Cube3DIcon />
           </Button>
 
           <div className="bg-gradient-to-r from-emerald-500 to-blue-500 rounded-full w-9 h-9 flex items-center justify-center text-white cursor-pointer shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105" 
+          data-tour-element="chracter-showcase-button"
           onClick={() => navigate("/CharacterShowcase")}
           >
             🤖
@@ -590,7 +650,8 @@ const AppHeader = ({ messages, onLoadChat, currentChatId, onNewChat, selectedDom
         isOpen={isLibraryOpen} 
         onClose={() => setIsLibraryOpen(false)} 
       />
-    </>
+      
+    </TourProvider>
   );
 };
 

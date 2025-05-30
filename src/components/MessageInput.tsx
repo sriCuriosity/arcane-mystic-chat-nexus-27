@@ -180,6 +180,7 @@ const MessageInput = ({ onSendMessage, disabled, initialMessage, inputText, setI
                   scrollbarWidth: 'thin',
                   scrollbarColor: isDarkMode ? '#475569 transparent' : '#cbd5e1 transparent'
                 }}
+                data-tour-element="prompt-input"
               />
               
               {/* Emoji Button */}
