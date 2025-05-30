@@ -1,4 +1,4 @@
-import React from "react";
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -14,6 +14,7 @@ import ChatPage from "./pages/ChatPage";
 import CharacterShowcase from "./pages/CharacterShowcase";
 import DomainSelector from "./pages/DomainSelector";
 import { AuthPage } from "./pages/AuthPage";
+import SettingsPage from "./components/SettingsPage";
 
 const queryClient = new QueryClient();
 
@@ -56,7 +57,8 @@ const App = () => (
               />
 
               {/* Catch-all */}
-              <Route path="*" element={<NotFound />} />
+              <Route path="/settings" element={<SettingsPage />} />
+            <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
         </AuthProvider>

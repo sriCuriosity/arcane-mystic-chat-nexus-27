@@ -17,3 +17,4 @@ pandas
 tqdm
 transformers
 python-multipart
+gunicorn

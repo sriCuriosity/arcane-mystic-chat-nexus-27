@@ -24,6 +24,7 @@ import { Separator } from "@/components/ui/separator";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Input } from "@/components/ui/input";
 import { useAuth } from '../contexts/AuthContext';
+import { Link } from "react-router-dom";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -378,14 +379,15 @@ const Sidebar = ({
               </div>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={cn("h-8 w-8 flex-shrink-0", isDarkMode && "hover:bg-slate-800 text-slate-200")}
-                    onClick={() => {/* Handle settings click */}}
-                  >
-                    <Settings size={16} />
-                  </Button>
+                  <Link to="/settings">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={cn("h-8 w-8 flex-shrink-0", isDarkMode && "hover:bg-slate-800 text-slate-200")}
+                    >
+                      <Settings size={16} />
+                    </Button>
+                  </Link>
                 </TooltipTrigger>
                 <TooltipContent
                   side="right"
