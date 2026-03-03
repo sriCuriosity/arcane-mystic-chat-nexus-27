@@ -1,0 +1,11 @@
+[build]
+  command = "bun run build"
+  publish = "dist"
+
+[functions]
+  directory = "netlify/functions"
+
+[[redirects]]
+  from = "/api/perplexity/*"
+  to = "/.netlify/functions/sonar-proxy"
+  status = 200

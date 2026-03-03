@@ -9,13 +9,14 @@
 
 import { classifyIntent as localClassifyIntent } from './intentClassifier';
 
-// Use proxy in development to bypass CORS, direct URL in production
-const getSonarApiUrl = () => import.meta.env.DEV 
-  ? "/api/perplexity/chat/completions" 
-  : "https://api.perplexity.ai/chat/completions";
+// In dev, Vite proxy forwards to Perplexity directly (uses VITE_SONAR_API_TOKEN).
+// In production, requests go to a Netlify serverless function that holds the token server-side.
+const getSonarApiUrl = () => import.meta.env.DEV
+  ? "/api/perplexity/chat/completions"
+  : "/.netlify/functions/sonar-proxy";
 
-// Read API token from an environment variable
-const getSonarApiToken = () => import.meta.env.VITE_SONAR_API_TOKEN;
+// Only used in development; production token lives in the serverless function
+const getSonarApiToken = () => import.meta.env.DEV ? import.meta.env.VITE_SONAR_API_TOKEN : null;
 
 export interface IntentResult {
   matched_intention: string | null;
@@ -82,10 +83,12 @@ export class ApiService {
    * @throws Error if API request fails
    */
   static async getSonarResponse(userMessage: string, systemContent: string): Promise<string> {
-    // Check for API token
     const SONAR_API_TOKEN = getSonarApiToken();
-    if (!SONAR_API_TOKEN) {
-      console.error('[ApiService] VITE_SONAR_API_TOKEN is not configured');
+
+    // In development, a token is required (Vite proxy forwards to Perplexity directly).
+    // In production, the serverless function supplies the token.
+    if (import.meta.env.DEV && !SONAR_API_TOKEN) {
+      console.error('[ApiService] VITE_SONAR_API_TOKEN is not configured for development');
       throw new Error(
         'Sonar API is not configured. Please set VITE_SONAR_API_TOKEN environment variable.'
       );
@@ -103,12 +106,16 @@ export class ApiService {
 
     try {
       const SONAR_API_URL = getSonarApiUrl();
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      // Only attach Authorization header in dev (production uses serverless proxy)
+      if (SONAR_API_TOKEN) {
+        headers.Authorization = `Bearer ${SONAR_API_TOKEN}`;
+      }
       const response = await fetch(SONAR_API_URL, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${SONAR_API_TOKEN}`,
-          "Content-Type": "application/json",
-        },
+        headers,
         body: JSON.stringify(requestPayload),
       });
 
