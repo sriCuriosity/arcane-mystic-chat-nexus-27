@@ -10,12 +10,12 @@
 import { classifyIntent as localClassifyIntent } from './intentClassifier';
 
 // Use proxy in development to bypass CORS, direct URL in production
-const SONAR_API_URL = import.meta.env.DEV 
+const getSonarApiUrl = () => import.meta.env.DEV 
   ? "/api/perplexity/chat/completions" 
   : "https://api.perplexity.ai/chat/completions";
 
 // Read API token from an environment variable
-const SONAR_API_TOKEN = import.meta.env.VITE_SONAR_API_TOKEN;
+const getSonarApiToken = () => import.meta.env.VITE_SONAR_API_TOKEN;
 
 export interface IntentResult {
   matched_intention: string | null;
@@ -83,6 +83,7 @@ export class ApiService {
    */
   static async getSonarResponse(userMessage: string, systemContent: string): Promise<string> {
     // Check for API token
+    const SONAR_API_TOKEN = getSonarApiToken();
     if (!SONAR_API_TOKEN) {
       console.error('[ApiService] VITE_SONAR_API_TOKEN is not configured');
       throw new Error(
@@ -101,6 +102,7 @@ export class ApiService {
     console.log('[ApiService] Sending request to Sonar AI...');
 
     try {
+      const SONAR_API_URL = getSonarApiUrl();
       const response = await fetch(SONAR_API_URL, {
         method: "POST",
         headers: {
